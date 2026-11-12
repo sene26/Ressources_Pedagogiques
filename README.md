@@ -2,7 +2,7 @@
 
 Plateforme web de centralisation, de partage, de versionnement et de suivi des ressources pédagogiques de l'Université Assane Seck de Ziguinchor.
 
-> **État :** Lots 0 à 4 terminés : connexion, rôles, maquette, affectations, inscriptions, dépôt et versions des ressources, publication programmée, archivage, téléchargements contrôlés, catalogue, recherche plein texte, « Mes cours », aperçus, validation des sujets d'examen, favoris, notifications.
+> **État :** Lots 0 à 5 terminés : connexion, rôles, maquette, affectations, inscriptions, dépôt et versions des ressources, publication programmée, archivage, téléchargements contrôlés, catalogue, recherche plein texte, « Mes cours », aperçus, validation des sujets d'examen, favoris, notifications, tableaux de bord, export CSV, journal, import CSV des comptes, profil, duplication.
 
 ## Prérequis
 

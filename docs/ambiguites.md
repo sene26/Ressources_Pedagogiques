@@ -153,3 +153,12 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - **Destinataires :** les personnes qui suivent l'EC (inscription ou affectation de l'année, ou suivi explicite) **et** qui ont le droit de voir la ressource. L'auteur n'est jamais notifié de sa propre publication.
 - **Courriels :** les notifications non lues sont regroupées en un seul courriel par personne. Chacun peut désactiver les courriels (page Notifications, puis Profil au Lot 5). Sans serveur SMTP configuré, les courriels sont écrits dans le journal de l'application.
 - **Favoris :** une ressource devenue invisible (archivée, dépubliée) disparaît de la liste des favoris, sans être retirée des favoris.
+
+## A22. Pilotage — ✅ par défaut (Lot 5)
+
+- **Tableaux de bord :** uniquement des chiffres agrégés (A12), présentés en tableaux (légers et accessibles). « EC sans ressource » signifie : sans ressource **publiée pour les étudiants** pour l'année choisie. « Les plus consultées » additionne vues et téléchargements sur les 30 derniers jours.
+- **Export CSV (F26) :** séparateur « ; » et encodage UTF-8 avec BOM, pour Excel en français. Les valeurs qui commencent par `=`, `+`, `-` ou `@` sont neutralisées (protection contre l'injection de formules).
+- **Import CSV (F3) :** colonnes `nom ; prenom ; courriel ; telephone ; roles ; formation ; niveau`. Le fichier est **vérifié entièrement avant l'import** : à la moindre erreur, rien n'est importé. Les adresses déjà connues sont ignorées. Les nouveaux comptes reçoivent un **lien d'activation valable 7 jours** pour choisir leur mot de passe, qui n'est ainsi jamais transmis.
+- **Profil (F4) :** nom, prénom, téléphone et photo sont modifiables, ainsi que le mot de passe (l'ancien est demandé). L'adresse électronique n'est modifiable que par l'administrateur, car c'est l'identifiant de connexion. La photo est recadrée en 256 × 256 et compressée en WebP (quelques Ko).
+- **Duplication (F15) :** tout enseignant qui **voit** une ressource peut la dupliquer vers des EC où il est affecté pour l'année cible (RG2). La copie est un **brouillon à son nom**, avec la seule version en vigueur, et garde la trace de sa ressource d'origine.
+- **Non réalisé (priorité C) :** F8, l'import d'une maquette depuis Excel ou CSV, et F16, les commentaires et notes entre enseignants. Ils sont proposés pour une version ultérieure.

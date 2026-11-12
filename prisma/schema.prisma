@@ -66,6 +66,8 @@ model User {
   email              String   @unique @db.VarChar(191)
   passwordHash       String   @db.VarChar(255)
   phone              String?  @db.VarChar(30)
+  /// Photo de profil (F4), dans le stockage : « avatars/<uuid> », WebP 256 px.
+  photoKey           String?  @db.VarChar(100)
   active             Boolean  @default(true)
   emailNotifications Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -77,8 +79,8 @@ model User {
   managedPrograms     ProgramManagerAssignment[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
-  resources           Resource[]          @relation("ResourceAuthor")
-  approvedResources   Resource[]          @relation("ResourceApprover")
+  resources           Resource[]                 @relation("ResourceAuthor")
+  approvedResources   Resource[]                 @relation("ResourceApprover")
   resourceVersions    ResourceVersion[]
   accessLogs          AccessLog[]
   favorites           Favorite[]
@@ -119,9 +121,9 @@ model Program {
 /// Semestre numéroté dans la formation (S1…S6 en Licence, S1…S4 en Master).
 /// Créés automatiquement avec la formation ; niveau = ceil(number / 2).
 model Semester {
-  id        String @id @default(uuid()) @db.Char(36)
-  number    Int    @db.TinyInt
-  programId String @db.Char(36)
+  id        String  @id @default(uuid()) @db.Char(36)
+  number    Int     @db.TinyInt
+  programId String  @db.Char(36)
   program   Program @relation(fields: [programId], references: [id], onDelete: Restrict)
 
   teachingUnits TeachingUnit[]
@@ -258,30 +260,34 @@ model AuditLog {
 
 /// Ressource pédagogique (F9). Visibilité calculée par src/server/policies/resource-policy.ts (RG2 à RG7).
 model Resource {
-  id              String         @id @default(uuid()) @db.Char(36)
-  title           String         @db.VarChar(200)
-  description     String         @db.Text
-  type            ResourceType
+  id               String         @id @default(uuid()) @db.Char(36)
+  title            String         @db.VarChar(200)
+  description      String         @db.Text
+  type             ResourceType
   /// Mots-clés normalisés, séparés par des virgules (MariaDB n'a pas de type tableau).
-  keywords        String         @default("") @db.VarChar(500)
-  status          ResourceStatus @default(DRAFT)
-  visibility      Visibility     @default(PRIVATE)
+  keywords         String         @default("") @db.VarChar(500)
+  status           ResourceStatus @default(DRAFT)
+  visibility       Visibility     @default(PRIVATE)
   /// Date à partir de laquelle une ressource publiée est visible (F13) ; obligatoire pour examens et corrigés (A5).
-  publishAt       DateTime?
+  publishAt        DateTime?
   /// Validation des sujets d'examen et corrigés par le responsable de formation (RG5, F14).
-  approvalStatus  ApprovalStatus @default(NOT_REQUIRED)
-  approvedById    String?        @db.Char(36)
-  approvedAt      DateTime?
-  rejectionReason String?        @db.VarChar(500)
+  approvalStatus   ApprovalStatus @default(NOT_REQUIRED)
+  approvedById     String?        @db.Char(36)
+  approvedAt       DateTime?
+  rejectionReason  String?        @db.VarChar(500)
   /// Vrai dès la première publication : une ressource déjà publiée ne peut plus être supprimée, seulement archivée (A7, RG9).
-  everPublished   Boolean        @default(false)
+  everPublished    Boolean        @default(false)
   /// Date d'envoi des notifications de publication (F22) : une publication n'est notifiée qu'une fois.
-  notifiedAt      DateTime?
-  authorId        String         @db.Char(36)
-  academicYearId  String         @db.Char(36)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  notifiedAt       DateTime?
+  authorId         String         @db.Char(36)
+  academicYearId   String         @db.Char(36)
+  /// Ressource d'origine d'une duplication (F15).
+  duplicatedFromId String?        @db.Char(36)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
+  duplicatedFrom Resource?               @relation("ResourceDuplicates", fields: [duplicatedFromId], references: [id], onDelete: SetNull)
+  duplicates     Resource[]              @relation("ResourceDuplicates")
   author         User                    @relation("ResourceAuthor", fields: [authorId], references: [id], onDelete: Restrict)
   approvedBy     User?                   @relation("ResourceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   academicYear   AcademicYear            @relation(fields: [academicYearId], references: [id], onDelete: Restrict)

@@ -27,7 +27,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="h1">Utilisateurs</h1>
-        <Link href="/gestion/utilisateurs/nouveau" className="btn btn-primary">+ Nouvel utilisateur</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/gestion/utilisateurs/import" className="btn">Importer (CSV)</Link>
+          <Link href="/gestion/utilisateurs/nouveau" className="btn btn-primary">+ Nouvel utilisateur</Link>
+        </div>
       </div>
       <form method="get" className="card flex flex-wrap items-end gap-3">
         <div className="grow">

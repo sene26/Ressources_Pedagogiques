@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ApprovalStatus, Prisma, ResourceStatus, ResourceType, Visibility } from "@prisma/client";
+import { z } from "zod";
 import { checkExternalUrl, checkUpload } from "@/lib/file-types";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { parseInput, publicationSchema, resourceMetadataSchema, versionCommentSchema } from "@/lib/validation";
@@ -448,6 +449,97 @@ export async function listUploadableCourseElements(actor: CurrentUser) {
   if (!year) return [];
   return db.courseElement.findMany({
     where: { archived: false, teachingUnit: { archived: false }, teachingAssignments: { some: { teacherId: actor.id, academicYearId: year.id } } },
+    include: { teachingUnit: { include: { semester: { include: { program: { select: { code: true, cycle: true } } } } } } },
+    orderBy: { code: "asc" },
+  });
+}
+
+// ─── Duplication (F15) ─────────────────────────────────────────────────────────
+
+/**
+ * Duplique une ressource visible vers d'autres EC et/ou une autre année universitaire (F15).
+ * La copie est un brouillon dont l'utilisateur est l'auteur ; seule la version en vigueur est copiée
+ * (le fichier est recopié dans le stockage). RG2 s'applique aux EC et à l'année cibles.
+ */
+export async function duplicateResource(
+  actor: CurrentUser,
+  sourceId: string,
+  input: { courseElementIds?: unknown; academicYearId?: unknown },
+  now = new Date(),
+) {
+  const viewer = await loadViewerContext(actor);
+  await loadForAction(viewer, sourceId, now);
+  const target = parseInput(
+    resourceMetadataSchema.pick({ courseElementIds: true }).extend({ academicYearId: z.string().uuid("Année universitaire invalide.") }),
+    input,
+  );
+  const year = await db.academicYear.findUnique({ where: { id: target.academicYearId } });
+  if (!year) throw new NotFoundError("Année universitaire introuvable.");
+  await assertCourseElementsUsable(target.courseElementIds);
+  ensure(
+    canUploadToCourseElements(viewer, target.courseElementIds, year.id),
+    `Vous devez être affecté(e) à chacun des EC choisis pour l'année ${year.label} (RG2).`,
+  );
+
+  const source = await db.resource.findUniqueOrThrow({
+    where: { id: sourceId },
+    include: { versions: { orderBy: { number: "desc" }, take: 1 } },
+  });
+  const current = source.versions[0];
+  let storageKey: string | null = null;
+  if (current.storageKey) {
+    storageKey = `${year.label}/${randomUUID()}`;
+    const object = await getStorage().get(current.storageKey);
+    await getStorage().put(storageKey, object.stream, object.size, current.mimeType ?? "application/octet-stream");
+  }
+  try {
+    return await db.$transaction(async (tx) => {
+      const copy = await tx.resource.create({
+        data: {
+          title: source.title,
+          description: source.description,
+          type: source.type,
+          keywords: source.keywords,
+          visibility: source.visibility,
+          status: "DRAFT",
+          authorId: actor.id,
+          academicYearId: year.id,
+          duplicatedFromId: source.id,
+          courseElements: { create: target.courseElementIds.map((courseElementId) => ({ courseElementId })) },
+          versions: {
+            create: {
+              number: 1,
+              comment: `Copie de « ${source.title} » (v${current.number})`.slice(0, 500),
+              authorId: actor.id,
+              storageKey,
+              externalUrl: current.externalUrl,
+              originalName: current.originalName,
+              mimeType: current.mimeType,
+              format: current.format,
+              sizeBytes: current.sizeBytes,
+            },
+          },
+        },
+      });
+      await audit(tx, {
+        actorId: actor.id,
+        action: "RESOURCE_DUPLICATED",
+        entityType: "Resource",
+        entityId: copy.id,
+        details: { from: source.id, academicYear: year.label },
+      });
+      return copy;
+    });
+  } catch (error) {
+    if (storageKey) await getStorage().delete(storageKey).catch(() => undefined);
+    throw error;
+  }
+}
+
+/** EC où l'utilisateur peut déposer pour une année donnée (choix des cibles d'une duplication). */
+export async function listUploadableCourseElementsForYear(actor: CurrentUser, academicYearId: string) {
+  return db.courseElement.findMany({
+    where: { archived: false, teachingUnit: { archived: false }, teachingAssignments: { some: { teacherId: actor.id, academicYearId } } },
     include: { teachingUnit: { include: { semester: { include: { program: { select: { code: true, cycle: true } } } } } } },
     orderBy: { code: "asc" },
   });

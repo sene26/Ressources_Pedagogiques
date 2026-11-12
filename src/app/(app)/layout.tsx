@@ -33,6 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/notifications" className="link" data-testid="notifications-link">
               Notifications{unread > 0 && <span className="badge ml-1 bg-red-100 text-red-800">{unread}<span className="sr-only"> non lue(s)</span></span>}
             </Link>
+            {(isTeacher(user) || canApprove) && <Link href="/tableau-de-bord" className="link">Tableau de bord</Link>}
             {canApprove && (
               <Link href="/validations" className="link">
                 Validations{pending > 0 && <span className="badge ml-1 bg-amber-100 text-amber-900">{pending}</span>}
@@ -41,10 +42,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {canAccessManagement(user) && <Link href="/gestion/formations" className="link">Gestion</Link>}
           </nav>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-slate-600" data-testid="current-user">
+            <Link href="/profil" className="link text-slate-700" data-testid="current-user">
               {user.firstName} {user.lastName}
-              <span className="sr-only"> — {user.roles.map((r) => ROLE_LABELS[r]).join(", ")}</span>
-            </span>
+              <span className="sr-only"> — {user.roles.map((r) => ROLE_LABELS[r]).join(", ")} (mon profil)</span>
+            </Link>
             <form action={logout}>
               <button type="submit" className="btn btn-sm">Se déconnecter</button>
             </form>

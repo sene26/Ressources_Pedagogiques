@@ -14,6 +14,7 @@ import { FORMAT_LABELS, formatSize } from "@/lib/file-types";
 import { RESOURCE_TYPE_LABELS, VISIBILITY_LABELS } from "@/lib/labels";
 import { previewFor } from "@/lib/preview";
 import { issueFileToken } from "@/server/file-tokens";
+import { isTeacher } from "@/server/policies/resource-policy";
 import { requireUser } from "@/server/session";
 import { recordAccess } from "@/server/services/access-log";
 import { isFavorite } from "@/server/services/favorites";
@@ -42,6 +43,7 @@ const INFO_MESSAGES: Record<string, string> = {
   "archivee-rg9": "Cette ressource a déjà été publiée : elle a été archivée et non supprimée (RG9).",
   restauree: "Ressource restaurée (en brouillon).",
   validee: "Publication validée.",
+  dupliquee: "Copie créée en brouillon : vérifiez-la puis publiez-la.",
   refusee: "Publication refusée ; l'auteur est prévenu.",
 };
 
@@ -147,6 +149,12 @@ export default async function ResourcePage({ params, searchParams }: Params) {
             ))}
           </ul>
         </section>
+      )}
+
+      {isTeacher(user) && resource.status !== "ARCHIVED" && (
+        <p>
+          <Link href={`/ressources/${resource.id}/dupliquer`} className="btn btn-sm">Dupliquer vers un autre EC ou une autre année</Link>
+        </p>
       )}
 
       {(permissions.edit || permissions.changeStatus || permissions.hardDelete) && (

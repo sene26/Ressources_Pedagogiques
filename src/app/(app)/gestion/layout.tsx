@@ -11,6 +11,7 @@ export default async function ManagementLayout({ children }: { children: React.R
         <Link href="/gestion/formations" className="btn btn-sm">Formations</Link>
         {isAdmin(user) && <Link href="/gestion/utilisateurs" className="btn btn-sm">Utilisateurs</Link>}
         {isAdmin(user) && <Link href="/gestion/annees" className="btn btn-sm">Années universitaires</Link>}
+        {isAdmin(user) && <Link href="/gestion/journal" className="btn btn-sm">Journal</Link>}
       </nav>
       {children}
     </div>

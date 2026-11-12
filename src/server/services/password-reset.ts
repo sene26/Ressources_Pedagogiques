@@ -54,6 +54,35 @@ export async function requestPasswordReset(rawEmail: unknown, now = new Date()):
   return token;
 }
 
+/** Durée de validité d'un lien d'activation (comptes importés, F3) : 7 jours. */
+export const ACTIVATION_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Envoie un lien d'activation à un compte créé par import (F3) : l'utilisateur choisit
+ * lui-même son mot de passe, qui n'est ainsi jamais transmis en clair.
+ */
+export async function sendActivationLink(user: { id: string; email: string; firstName: string }, now = new Date()): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  await db.passwordResetToken.create({
+    data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(now.getTime() + ACTIVATION_TOKEN_TTL_MS) },
+  });
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  await sendMail({
+    to: user.email,
+    subject: "RessourcesPéda — activez votre compte",
+    text: [
+      `Bonjour ${user.firstName},`,
+      "",
+      "Un compte vous a été créé sur RessourcesPéda, la plateforme des ressources pédagogiques de l'UASZ.",
+      "Pour l'activer, choisissez votre mot de passe en ouvrant ce lien (valable 7 jours) :",
+      `${appUrl}/reinitialisation?jeton=${token}`,
+      "",
+      `Votre identifiant de connexion est votre adresse électronique : ${user.email}`,
+    ].join("\n"),
+  });
+  return token;
+}
+
 /** Définit le nouveau mot de passe si le jeton est valide, puis invalide tous les jetons de l'utilisateur. */
 export async function resetPassword(input: unknown, now = new Date()): Promise<void> {
   const data = parseInput(passwordResetSchema, input);
