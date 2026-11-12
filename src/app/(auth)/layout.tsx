@@ -7,6 +7,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <h1 className="text-2xl font-bold text-slate-900">RessourcesPéda</h1>
         </div>
         <div className="card">{children}</div>
+        <p className="mt-4 text-center text-xs text-slate-500">
+          <a href="/confidentialite" className="link">Protection des données personnelles</a>
+        </p>
       </div>
     </main>
   );

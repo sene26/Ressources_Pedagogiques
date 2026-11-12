@@ -115,6 +115,7 @@ erDiagram
         uuid approvedById FK
         text rejectionReason
         bool everPublished
+        datetime notifiedAt "notifications envoyées (F22)"
         uuid authorId FK
         uuid academicYearId FK
         uuid duplicatedFromId FK

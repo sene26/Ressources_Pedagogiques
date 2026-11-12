@@ -33,7 +33,7 @@ flowchart LR
     DB[(MariaDB<br/>+ index FULLTEXT)]
     FS[(Fichiers<br/>disque local ou MinIO / S3)]
     SMTP[[Serveur SMTP<br/>Mailpit en dev]]
-    CRON[Conteneur cron<br/>notifications + sauvegardes]
+    CRON[Conteneurs cron et backup<br/>notifications, sauvegardes]
 
     UI <-->|HTTPS| P
     UI -->|formulaires| SA
@@ -45,46 +45,54 @@ flowchart LR
     CRON -->|mariadb-dump + copie fichiers| DB
 ```
 
-## 2. Organisation du code (prévue)
+## 2. Organisation du code
 
 ```
 .
 ├── prisma/
-│   ├── schema.prisma
-│   ├── migrations/            # dont l'index plein texte (SQL brut)
-│   └── seed.ts                # données de démonstration (Master MIO)
+│   ├── schema.prisma          # modèle de données (MariaDB, fournisseur « mysql »)
+│   ├── migrations/            # migrations (dont contraintes CHECK et index FULLTEXT)
+│   ├── seed.ts                # données de démonstration (Master MIO, 20 ressources)
+│   └── demo-files.ts          # génération de petits PDF de démonstration
 ├── src/
-│   ├── app/                   # routes Next.js (App Router), libellés en français
-│   │   ├── (auth)/connexion, mot-de-passe-oublie, reinitialisation
-│   │   ├── (app)/mes-cours            # F20 — étudiant
-│   │   ├── (app)/catalogue/[...]      # F17 — formation › semestre › UE › EC
-│   │   ├── (app)/recherche            # F18, F19
-│   │   ├── (app)/ressources/[id]      # fiche, aperçu, versions
-│   │   ├── (app)/mes-ressources       # enseignant : liste, dépôt, édition
-│   │   ├── (app)/validations          # responsable : F14
-│   │   ├── (app)/tableau-de-bord      # F23, F24
-│   │   ├── (app)/admin/...            # utilisateurs, formations, années, journal
+│   ├── app/
+│   │   ├── (auth)/            # connexion, mot de passe oublié, réinitialisation
+│   │   ├── (app)/             # espace connecté
+│   │   │   ├── page.tsx                 # accueil selon le rôle (Mes cours / Mes enseignements)
+│   │   │   ├── mes-cours/               # F20
+│   │   │   ├── catalogue/[programId]/   # F17
+│   │   │   ├── ec/[id]/                 # page d'un EC (F17, F19, suivi F22)
+│   │   │   ├── recherche/               # F18, F19
+│   │   │   ├── ressources/              # dépôt, fiche, modification, duplication (F9–F12, F15)
+│   │   │   ├── mes-ressources/          # ressources de l'enseignant
+│   │   │   ├── validations/             # F14
+│   │   │   ├── favoris/, notifications/ # F21, F22
+│   │   │   ├── tableau-de-bord/         # F23, F24, F26
+│   │   │   ├── profil/                  # F4
+│   │   │   └── gestion/                 # formations, maquette, affectations, inscriptions,
+│   │   │                                # utilisateurs, import CSV, années, journal (F2, F3, F5–F7, F25)
+│   │   ├── confidentialite/   # information loi 2008-12 (publique)
 │   │   └── api/
-│   │       ├── files/[token]/route.ts # téléchargement / aperçu contrôlé
-│   │       ├── cron/notifications/route.ts
-│   │       └── export/stats/route.ts  # F26
+│   │       ├── auth/[...nextauth]/      # Auth.js
+│   │       ├── files/[token]/           # téléchargement et aperçu contrôlés
+│   │       ├── avatars/[userId]/        # photos de profil
+│   │       ├── export/stats/            # export CSV (F26)
+│   │       └── cron/notifications/      # tâche périodique (CRON_SECRET)
 │   ├── components/            # composants d'interface (Tailwind)
-│   ├── server/
-│   │   ├── auth.ts            # configuration Auth.js
-│   │   ├── db.ts              # client Prisma unique
-│   │   ├── policies/          # canViewResource, visibleResourcesWhere, canUploadToEc…
-│   │   ├── services/          # resources, versions, catalog, enrollments, stats, audit…
-│   │   ├── storage/           # StorageDriver, LocalStorage, S3Storage
-│   │   └── mail/
-│   ├── lib/                   # utilitaires purs (formats, dates, validation Zod)
-│   └── i18n/fr.ts             # libellés et messages d'erreur en français
+│   ├── lib/                   # fonctions pures : validation Zod, formats de fichiers, CSV, dates, libellés
+│   └── server/
+│       ├── policies/          # resource-policy.ts, user-policy.ts (fonctions pures)
+│       ├── services/          # seule couche qui accède à Prisma
+│       ├── storage/           # StorageDriver : local.ts, s3.ts
+│       ├── auth.ts, session.ts, current-user.ts, file-tokens.ts, mail.ts, audit.ts
 ├── tests/
-│   ├── unit/                  # politiques, validations (sans base)
-│   ├── integration/           # services + MariaDB de test (RG1–RG10)
-│   └── e2e/                   # Playwright : parcours par rôle
-├── docker/                    # Dockerfile, scripts de sauvegarde
-├── docker-compose.yml
-└── .env.example
+│   ├── unit/, integration/    # Vitest (MariaDB de test)
+│   ├── e2e/                   # Playwright (un parcours par lot)
+│   ├── perf/                  # recherche sur 10 000 ressources
+│   └── support/               # jeux de données et utilitaires
+├── docker/                    # entrypoint, cron, sauvegarde, configuration MariaDB
+├── Dockerfile, docker-compose.yml, .env.example
+└── .github/workflows/ci.yml   # intégration continue
 ```
 
 ## 3. Principes de conception
@@ -142,10 +150,8 @@ Les pages et les actions ne touchent jamais Prisma directement. Un service :
 
 ### 3.7 Tâches planifiées
 
-Un petit conteneur `cron` (image Alpine) :
-- appelle `POST /api/cron/notifications` toutes les 10 minutes, avec un secret partagé `CRON_SECRET`, pour envoyer les notifications des ressources dont la date de publication vient d'être atteinte (F22) ;
-- lance chaque nuit `mariadb-dump --single-transaction` et une copie des fichiers vers le volume de sauvegarde, avec une rétention de 14 jours ;
-- lance chaque mois l'anonymisation des consultations de plus de 2 ans (A12).
+- Le conteneur `cron` (même image que l'application, script `docker/cron.mjs`) appelle `POST /api/cron/notifications` toutes les 10 minutes, avec le secret partagé `CRON_SECRET`. Cet appel envoie les notifications dues (dates de publication atteintes, validations) et les courriels, puis anonymise les consultations de plus de 2 ans (A12).
+- Le conteneur `backup` (image MariaDB, script `docker/backup.sh`) lance chaque jour `mariadb-dump --single-transaction` et archive les fichiers, avec une rétention de 14 jours.
 
 ## 4. Déploiement
 
@@ -155,7 +161,8 @@ flowchart TB
         app["app<br/>Next.js (standalone)<br/>port 3000"]
         db[("db<br/>MariaDB 10.11")]
         minio[("minio<br/>stockage S3 (prod)")]
-        cron["cron<br/>notifications + sauvegardes"]
+        cron["cron<br/>notifications"]
+        backup["backup<br/>sauvegardes quotidiennes"]
         mailpit["mailpit<br/>(dev uniquement)"]
     end
     rp["Reverse proxy HTTPS<br/>(Nginx / Caddy de l'université)"] --> app
@@ -163,13 +170,15 @@ flowchart TB
     app --> minio
     app --> mailpit
     cron --> app
-    cron --> db
-    db --- vdb[(volume pgdata)]
-    minio --- vfs[(volume fichiers)]
-    cron --- vbk[(volume sauvegardes)]
+    backup --> db
+    db --- vdb[(volume dbdata)]
+    app --- vfs[(volume storage ou MinIO)]
+    backup --- vbk[(dossier ./backups)]
 ```
 
-Variables d'environnement (détaillées dans `.env.example`) : `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `STORAGE_DRIVER` (`local`|`s3`), `STORAGE_LOCAL_DIR`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, `FILE_TOKEN_SECRET`, `CRON_SECRET`, `MAX_UPLOAD_MB`.
+Variables d'environnement (détaillées dans `.env.example`) : `DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `STORAGE_DRIVER` (`local`|`s3`), `STORAGE_LOCAL_DIR`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, `FILE_TOKEN_SECRET`, `CRON_SECRET`, `MAX_UPLOAD_MB`, `MARIADB_ROOT_PASSWORD`, `MARIADB_PASSWORD`.
+
+Procédure complète : [`deploiement.md`](deploiement.md). Mesures de sécurité : [`securite.md`](securite.md).
 
 ## 5. Stratégie de tests
 

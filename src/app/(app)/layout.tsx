@@ -53,6 +53,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      <footer className="mx-auto max-w-5xl px-4 pb-6 text-xs text-slate-500">
+        RessourcesPéda · Université Assane Seck de Ziguinchor · <Link href="/confidentialite" className="link">Données personnelles</Link>
+      </footer>
     </div>
   );
 }

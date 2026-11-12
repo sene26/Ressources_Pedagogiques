@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { processNotifications } from "@/server/services/notifications";
+import { anonymizeOldAccessLogs } from "@/server/services/privacy";
 
 /**
  * Tâche périodique (F13, F22) : notifie les publications devenues visibles (dates programmées atteintes,
@@ -13,5 +14,6 @@ export async function POST(request: Request) {
     return new Response("Accès refusé.", { status: 401 });
   }
   const result = await processNotifications();
-  return Response.json(result);
+  const anonymized = await anonymizeOldAccessLogs();
+  return Response.json({ ...result, anonymized });
 }

@@ -1,0 +1,44 @@
+# Intégration continue : vérification du code, tests unitaires et d'intégration (MariaDB), tests de bout en bout.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root-ci
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s --health-retries 30
+    env:
+      DATABASE_URL: mysql://root:root-ci@127.0.0.1:3306/ressources_test
+      AUTH_SECRET: secret-ci-uniquement
+      FILE_TOKEN_SECRET: secret-fichiers-ci
+      AUTH_TRUST_HOST: "true"
+      APP_URL: http://localhost:3100
+      DEMO_PASSWORD: Demo-ci-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # innodb_ft_min_token_size vaut déjà 3 par défaut ; on désactive les mots vides anglais (A20).
+      - name: Réglage MariaDB (recherche plein texte)
+        run: mysql -h127.0.0.1 -uroot -proot-ci -e "SET GLOBAL innodb_ft_enable_stopword = 0;"
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Navigateur pour Playwright
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

@@ -74,7 +74,7 @@ Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modè
 | 3 | Consultation (F12, F17–F20) | Terminé |
 | 4 | Examens et notifications (F13, F14, F21, F22) | Terminé |
 | 5 | Pilotage (F3, F4, F15, F23–F26) | Terminé (F8 et F16, priorité C, non réalisés) |
-| 6 | Finalisation | À faire |
+| 6 | Finalisation | Terminé |
 
 ## Commandes
 
@@ -85,10 +85,12 @@ npm run lint           # ESLint
 npm run typecheck      # vérification TypeScript
 npm test               # Vitest : unitaires + intégration (base MariaDB de .env.test)
 npm run test:e2e       # Playwright : compile l'app et la lance sur le port 3100 (base ressources_e2e_test)
+npm run test:perf      # recherche sur 10 000 ressources (< 2 s)
 npm run db:migrate     # nouvelle migration Prisma (développement)
 npm run db:deploy      # appliquer les migrations
 npm run db:seed        # données de démonstration (DEMO_PASSWORD requis)
-docker compose up -d   # MariaDB + Mailpit pour le développement
+docker compose up -d --build                  # production (app, db, cron, backup) — voir docs/deploiement.md
+docker compose --profile dev up -d db mailpit # développement
 ```
 
 ## Repères dans le code

@@ -162,3 +162,11 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - **Profil (F4) :** nom, prénom, téléphone et photo sont modifiables, ainsi que le mot de passe (l'ancien est demandé). L'adresse électronique n'est modifiable que par l'administrateur, car c'est l'identifiant de connexion. La photo est recadrée en 256 × 256 et compressée en WebP (quelques Ko).
 - **Duplication (F15) :** tout enseignant qui **voit** une ressource peut la dupliquer vers des EC où il est affecté pour l'année cible (RG2). La copie est un **brouillon à son nom**, avec la seule version en vigueur, et garde la trace de sa ressource d'origine.
 - **Non réalisé (priorité C) :** F8, l'import d'une maquette depuis Excel ou CSV, et F16, les commentaires et notes entre enseignants. Ils sont proposés pour une version ultérieure.
+
+## A23. Finalisation — ✅ par défaut (Lot 6)
+
+- **Déploiement :** une image Docker de production (sortie autonome de Next.js) qui applique les migrations au démarrage. Des conteneurs séparés assurent la tâche périodique (notifications, anonymisation) et les sauvegardes quotidiennes (14 jours). MinIO et Mailpit sont proposés en option (profils `s3` et `dev`).
+- **Recherche :** au-delà de 5 000 correspondances textuelles, seules les 5 000 plus pertinentes sont gardées avant le filtrage des droits. Les mesures montrent moins de 150 ms pour 10 000 ressources.
+- **CSP :** `unsafe-inline` est conservé pour les scripts, car Next.js en insère sans nonce. C'est une amélioration possible, décrite dans `docs/securite.md`.
+- **Dépendances :** les versions corrigées de nodemailer (10.5) et de deepmerge-ts (8) sont imposées par `overrides`, ce qui donne 0 vulnérabilité connue en production.
+- **Non réalisé (priorité C) :** F8 (import d'une maquette depuis Excel ou CSV) et F16 (commentaires et notes entre enseignants).

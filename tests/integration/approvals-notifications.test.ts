@@ -183,6 +183,6 @@ describe("Tâche périodique /api/cron/notifications", () => {
     expect((await POST(new Request("http://x", { method: "POST", headers: { authorization: "Bearer mauvais" } }))).status).toBe(401);
     const ok = await POST(new Request("http://x", { method: "POST", headers: { authorization: "Bearer secret-cron-de-test" } }));
     expect(ok.status).toBe(200);
-    expect(await ok.json()).toEqual({ notifications: 0, emails: 0 });
+    expect(await ok.json()).toEqual({ notifications: 0, emails: 0, anonymized: 0 });
   });
 });
