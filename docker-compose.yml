@@ -1,0 +1,29 @@
+# Services de développement : MariaDB et Mailpit (capture des courriels).
+# Le service applicatif et les sauvegardes seront ajoutés au Lot 6.
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?définir MARIADB_ROOT_PASSWORD dans .env}
+      MARIADB_DATABASE: ressources_peda
+      MARIADB_USER: ressources
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?définir MARIADB_PASSWORD dans .env}
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./docker/mariadb/ressources.cnf:/etc/mysql/conf.d/ressources.cnf:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # interface web : http://localhost:8025
+
+volumes:
+  dbdata:

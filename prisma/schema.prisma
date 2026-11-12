@@ -1,0 +1,213 @@
+// Schéma de données RessourcesPéda — MariaDB (fournisseur Prisma « mysql »).
+// Voir docs/modele-donnees.md. Le Lot 1 couvre les comptes et l'organisation pédagogique ;
+// les ressources, versions et consultations arrivent au Lot 2.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  PROGRAM_MANAGER
+  ADMIN
+}
+
+enum Cycle {
+  LICENCE
+  MASTER
+}
+
+/// Utilisateur de la plateforme. Un utilisateur peut cumuler plusieurs rôles (F2).
+model User {
+  id                 String   @id @default(uuid()) @db.Char(36)
+  lastName           String   @db.VarChar(100)
+  firstName          String   @db.VarChar(100)
+  /// Toujours stocké en minuscules ; l'interclassement _ci garantit l'unicité insensible à la casse.
+  email              String   @unique @db.VarChar(191)
+  passwordHash       String   @db.VarChar(255)
+  phone              String?  @db.VarChar(30)
+  active             Boolean  @default(true)
+  emailNotifications Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  roles               UserRole[]
+  teachingAssignments TeachingAssignment[]
+  enrollments         Enrollment[]
+  managedPrograms     ProgramManagerAssignment[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]
+
+  @@index([lastName, firstName])
+  @@map("users")
+}
+
+model UserRole {
+  userId String @db.Char(36)
+  role   Role
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@index([role])
+  @@map("user_roles")
+}
+
+/// Formation (diplôme complet, ex. « Master MIO »). Le niveau d'étude est porté par l'inscription (A1).
+model Program {
+  id        String   @id @default(uuid()) @db.Char(36)
+  code      String   @unique @db.VarChar(30)
+  title     String   @db.VarChar(200)
+  cycle     Cycle
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  semesters   Semester[]
+  enrollments Enrollment[]
+  managers    ProgramManagerAssignment[]
+
+  @@map("programs")
+}
+
+/// Semestre numéroté dans la formation (S1…S6 en Licence, S1…S4 en Master).
+/// Créés automatiquement avec la formation ; niveau = ceil(number / 2).
+model Semester {
+  id        String @id @default(uuid()) @db.Char(36)
+  number    Int    @db.TinyInt
+  programId String @db.Char(36)
+  program   Program @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  teachingUnits TeachingUnit[]
+
+  @@unique([programId, number])
+  @@map("semesters")
+}
+
+/// Unité d'enseignement (UE).
+model TeachingUnit {
+  id         String   @id @default(uuid()) @db.Char(36)
+  code       String   @db.VarChar(30)
+  title      String   @db.VarChar(200)
+  credits    Int      @db.TinyInt
+  semesterId String   @db.Char(36)
+  archived   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Restrict)
+
+  courseElements CourseElement[]
+
+  @@unique([semesterId, code])
+  @@map("teaching_units")
+}
+
+/// Élément constitutif (EC) d'une UE.
+model CourseElement {
+  id             String       @id @default(uuid()) @db.Char(36)
+  code           String       @db.VarChar(30)
+  title          String       @db.VarChar(200)
+  credits        Int          @db.TinyInt
+  teachingUnitId String       @db.Char(36)
+  archived       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  teachingUnit   TeachingUnit @relation(fields: [teachingUnitId], references: [id], onDelete: Restrict)
+
+  teachingAssignments TeachingAssignment[]
+
+  @@unique([teachingUnitId, code])
+  @@map("course_elements")
+}
+
+/// Année universitaire. `isCurrent` vaut `true` pour l'année en cours et `null` sinon (jamais `false`) :
+/// l'index unique garantit ainsi une seule année en cours (A16), MariaDB n'ayant pas d'index partiel.
+model AcademicYear {
+  id        String   @id @default(uuid()) @db.Char(36)
+  label     String   @unique @db.VarChar(9)
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isCurrent Boolean? @unique
+
+  teachingAssignments TeachingAssignment[]
+  enrollments         Enrollment[]
+
+  @@map("academic_years")
+}
+
+/// Affectation d'un enseignant à un EC pour une année (F6, RG2).
+model TeachingAssignment {
+  teacherId       String        @db.Char(36)
+  courseElementId String        @db.Char(36)
+  academicYearId  String        @db.Char(36)
+  createdAt       DateTime      @default(now())
+  teacher         User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  courseElement   CourseElement @relation(fields: [courseElementId], references: [id], onDelete: Restrict)
+  academicYear    AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  @@id([teacherId, courseElementId, academicYearId])
+  @@index([courseElementId, academicYearId])
+  @@map("teaching_assignments")
+}
+
+/// Inscription d'un étudiant à une formation et un niveau pour une année (F7) ; une seule par an.
+model Enrollment {
+  id             String       @id @default(uuid()) @db.Char(36)
+  studentId      String       @db.Char(36)
+  programId      String       @db.Char(36)
+  level          Int          @db.TinyInt
+  academicYearId String       @db.Char(36)
+  createdAt      DateTime     @default(now())
+  student        User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  program        Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, academicYearId])
+  @@index([programId, level, academicYearId])
+  @@map("enrollments")
+}
+
+/// Rattachement d'un responsable à une formation (A3).
+model ProgramManagerAssignment {
+  userId    String  @db.Char(36)
+  programId String  @db.Char(36)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@id([userId, programId])
+  @@map("program_manager_assignments")
+}
+
+/// Jeton de réinitialisation du mot de passe : seul son empreinte SHA-256 est stockée.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @db.Char(36)
+  tokenHash String    @unique @db.Char(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+/// Journal des actions (F25).
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Char(36)
+  actorId    String?  @db.Char(36)
+  action     String   @db.VarChar(60)
+  entityType String   @db.VarChar(40)
+  entityId   String?  @db.Char(36)
+  details    Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

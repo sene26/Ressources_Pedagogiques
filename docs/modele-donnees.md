@@ -85,7 +85,7 @@ erDiagram
         string label UK "2025-2026"
         date startDate
         date endDate
-        bool isCurrent "une seule à true"
+        bool isCurrent "true ou null ; unique"
     }
     TEACHING_ASSIGNMENT {
         uuid teacherId FK
@@ -187,7 +187,7 @@ Entité technique non représentée : `PasswordResetToken` (userId, tokenHash, e
 | `UserRole` | clé primaire (`userId`, `role`) | plusieurs rôles par utilisateur (F2) |
 | `Semester` | unique (`programId`, `number`) | RG1 |
 | `TeachingUnit`, `CourseElement` | unique (`semesterId`, `code`) / (`teachingUnitId`, `code`) | codes uniques dans leur parent |
-| `AcademicYear` | colonne générée `current_flag` = `IF(is_current, 1, NULL)` avec index unique (MariaDB n'a pas d'index partiel ; les NULL ne se heurtent pas) | une seule année en cours (A16) |
+| `AcademicYear` | `isCurrent` vaut `true` ou `NULL` (jamais `false`), avec un index unique : MariaDB n'a pas d'index partiel, mais plusieurs `NULL` ne se heurtent pas | une seule année en cours (A16) |
 | `TeachingAssignment` | clé primaire (`teacherId`, `courseElementId`, `academicYearId`) | RG2 |
 | `Enrollment` | unique (`studentId`, `academicYearId`) | un étudiant a une seule inscription par an |
 | `ResourceEc` | clé primaire (`resourceId`, `courseElementId`) ; ≥ 1 ligne par ressource, vérifié par le service | RG1 |

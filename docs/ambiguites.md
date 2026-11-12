@@ -118,6 +118,6 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - Prisma reste l'ORM, avec le fournisseur `mysql`, compatible MariaDB.
 - **Recherche plein texte (F18)** : index `FULLTEXT` InnoDB et `MATCH … AGAINST` en mode booléen, au lieu de `tsvector`. L'interclassement `utf8mb4_unicode_ci` rend la recherche insensible aux accents et à la casse. En revanche, MariaDB ne fait pas de racinisation du français ; la recherche par préfixe (`simplex*`) compense en partie. L'objectif de moins de 2 s pour 10 000 ressources reste atteignable et sera mesuré au Lot 6.
 - **Mots-clés** : MariaDB n'a pas de type tableau. Ils sont stockés dans une colonne texte, séparés par des virgules et normalisés, ce qui permet de les indexer en plein texte.
-- **Une seule année « en cours »** : MariaDB n'a pas d'index unique partiel. On utilise une colonne générée, avec un index unique dessus.
+- **Une seule année « en cours »** : MariaDB n'a pas d'index unique partiel. La colonne `isCurrent` vaut `true` ou `NULL`, jamais `false`, et porte un index unique.
 - **Courriel unique, insensible à la casse** : assuré par l'interclassement `_ci` et par un stockage en minuscules.
 - **Sauvegarde** : `mariadb-dump --single-transaction`.

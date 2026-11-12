@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Couleurs de l'application (à remplacer par la charte de l'UASZ si elle est fournie). */
+@theme {
+  --color-brand-50: #eef7f3;
+  --color-brand-100: #d5ece2;
+  --color-brand-600: #1f7a55;
+  --color-brand-700: #186345;
+  --color-brand-800: #134e37;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  .input {
+    @apply block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply border-brand-700 bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-danger {
+    @apply border-red-300 text-red-700 hover:bg-red-50;
+  }
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+  .link {
+    @apply text-brand-700 underline-offset-2 hover:underline;
+  }
+  .badge {
+    @apply inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700;
+  }
+  .h1 {
+    @apply text-xl font-semibold text-slate-900 sm:text-2xl;
+  }
+  .h2 {
+    @apply text-lg font-semibold text-slate-900;
+  }
+}
