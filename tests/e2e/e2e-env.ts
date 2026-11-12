@@ -16,6 +16,8 @@ export function e2eEnv(): Record<string, string> {
     AUTH_TRUST_HOST: "true",
     APP_URL: "http://localhost:3100",
     SMTP_HOST: "",
+    STORAGE_DRIVER: "local",
+    STORAGE_LOCAL_DIR: "storage-e2e",
     NEXT_TELEMETRY_DISABLED: "1",
   };
 }

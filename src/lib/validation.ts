@@ -173,3 +173,62 @@ export function parseInput<T extends z.ZodType>(schema: T, input: unknown): z.ou
   const first = Object.values(fieldErrors)[0] ?? "Données invalides.";
   throw new ValidationError(first, fieldErrors);
 }
+
+// ─── Ressources (Lot 2) ────────────────────────────────────────────────────────
+
+export const resourceTypeSchema = z.enum(["COURSE", "TUTORIAL", "LAB", "EXAM", "SOLUTION", "VIDEO", "LINK", "OTHER"], {
+  error: "Type de ressource invalide.",
+});
+export const visibilitySchema = z.enum(["PRIVATE", "TEACHERS", "EC_STUDENTS"], { error: "Visibilité invalide." });
+
+/**
+ * Mots-clés saisis séparés par des virgules : nettoyés, mis en minuscules, dédoublonnés.
+ * Stockés sous la forme « mot1, mot2 » (MariaDB n'a pas de type tableau).
+ */
+export const keywordsSchema = z
+  .string()
+  .optional()
+  .transform((raw) =>
+    [...new Set((raw ?? "").split(",").map((k) => k.trim().toLowerCase().replace(/\s+/g, " ")).filter(Boolean))],
+  )
+  .refine((list) => list.length <= 20, "Mots-clés : 20 au maximum.")
+  .refine((list) => list.every((k) => k.length <= 50), "Mots-clés : 50 caractères au maximum chacun.")
+  .transform((list) => list.join(", "));
+
+export const resourceMetadataSchema = z.object({
+  title: trimmed(200, "Titre"),
+  description: z.string().trim().max(5000, "Description : 5 000 caractères au maximum.").optional().transform((v) => v ?? ""),
+  type: resourceTypeSchema,
+  keywords: keywordsSchema,
+  courseElementIds: z
+    .array(id("EC"))
+    .min(1, "Choisir au moins un EC (RG1).")
+    .max(20, "20 EC au maximum.")
+    .transform((ids) => [...new Set(ids)]),
+  visibility: visibilitySchema,
+});
+
+/**
+ * Date et heure saisies dans un champ « datetime-local » (sans fuseau).
+ * Le Sénégal vit à l'heure GMT toute l'année : la saisie est interprétée en UTC (A18).
+ */
+export const localDateTimeSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/, "Date de publication invalide.")
+  .transform((v) => new Date(`${v.length === 16 ? `${v}:00` : v}Z`));
+
+export const publicationSchema = z
+  .object({
+    mode: z.enum(["draft", "now", "schedule"], { error: "Choix de publication invalide." }),
+    publishAt: localDateTimeSchema.optional(),
+  })
+  .refine((v) => v.mode !== "schedule" || v.publishAt !== undefined, {
+    message: "Indiquer la date de publication programmée.",
+    path: ["publishAt"],
+  });
+
+export const versionCommentSchema = z
+  .string({ error: "Commentaire de version : champ obligatoire." })
+  .trim()
+  .min(1, "Commentaire de version : champ obligatoire.")
+  .max(500, "Commentaire de version : 500 caractères au maximum.");

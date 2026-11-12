@@ -69,8 +69,8 @@ Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modè
 | Lot | Contenu | État |
 | --- | --- | --- |
 | 0 | Conception | Validé (propositions par défaut, MariaDB) |
-| 1 | Socle (F1, F2, F5–F7) | Terminé, en attente de validation |
-| 2 | Ressources (F9–F11) | À faire |
+| 1 | Socle (F1, F2, F5–F7) | Terminé |
+| 2 | Ressources (F9–F11) | Terminé |
 | 3 | Consultation (F12, F17–F20) | À faire |
 | 4 | Examens et notifications (F13, F14, F21, F22) | À faire |
 | 5 | Pilotage (F3, F4, F15, F23–F25) | À faire |
@@ -97,5 +97,8 @@ docker compose up -d   # MariaDB + Mailpit pour le développement
 - `src/server/services/` : seule couche qui touche Prisma ; chaque service valide (Zod), vérifie la politique, écrit au journal dans la même transaction.
 - `src/app/(app)/gestion/actions.ts` : Server Actions, qui ne font qu'appeler les services via `runAction`.
 - `src/components/action-form.tsx` : formulaire relié à une Server Action. Il fonctionne sans JavaScript et ne perd pas la saisie en cas d'erreur.
+- `src/server/policies/resource-policy.ts` : « qui voit quoi » (A4), sous deux formes, `canViewResource` et `visibleResourcesWhere`, dont la concordance est testée (`tests/integration/resource-policy-consistency.test.ts`). Toute nouvelle liste de ressources DOIT passer par `visibleResourcesWhere`.
+- `src/server/storage/` : `StorageDriver` (local ou S3) ; les clés sont aléatoires et validées (pas de chemin fourni par l'utilisateur).
+- `src/app/api/files/[token]/route.ts` : seul point de sortie des fichiers (jeton HMAC de 10 min, accès revérifié, RG10).
 - `tests/support/` : chargement de `.env.test` (refus si le nom de la base ne contient pas « test ») et utilitaires de base de données.
 - Prisma refuse `migrate reset` lancé par un agent : les tests utilisent `migrate deploy` et vident les tables eux-mêmes.

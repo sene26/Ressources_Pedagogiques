@@ -1,7 +1,7 @@
 /**
  * Données de démonstration (cahier des charges §10) : la formation Master MIO avec ses UE et EC,
- * un administrateur, deux enseignants (dont une responsable de formation) et cinq étudiants.
- * Les ressources seront ajoutées au Lot 2.
+ * un administrateur, deux enseignants (dont une responsable de formation), cinq étudiants
+ * et une vingtaine de ressources (fichiers stockés selon STORAGE_DRIVER / STORAGE_LOCAL_DIR).
  *
  * Le script est idempotent : il peut être relancé sans créer de doublons.
  * Les intitulés des UE et EC sont fictifs et sont à remplacer par la maquette réelle.
@@ -9,8 +9,13 @@
  * Usage : DEMO_PASSWORD=… npm run db:seed
  */
 import "dotenv/config";
-import { PrismaClient, type Role } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { PrismaClient, type ResourceType, type Role, type Visibility } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
+import { LocalStorage } from "../src/server/storage/local";
+import { makePdf } from "./demo-files";
 
 const db = new PrismaClient();
 
@@ -168,10 +173,117 @@ async function main() {
     });
   }
 
+  const resourceCount = await seedResources(userIds, current.id, current.label);
+
   console.info(
     `Données de démonstration prêtes : ${USERS.length} comptes (@${DEMO_DOMAIN}), formation ${program.code}, ` +
-      `années ${previous.label} et ${current.label} (en cours).`,
+      `années ${previous.label} et ${current.label} (en cours), ${resourceCount} ressources.`,
   );
+}
+
+// ─── Ressources de démonstration ───────────────────────────────────────────────
+
+interface DemoResource {
+  title: string;
+  type: ResourceType;
+  ec: string;
+  author: string;
+  keywords: string;
+  description: string;
+  visibility?: Visibility;
+  status?: "DRAFT" | "PUBLISHED";
+  link?: string;
+  /** Jours avant (négatif) ou après (positif) aujourd'hui pour une publication programmée. */
+  publishInDays?: number;
+  approval?: "PENDING" | "APPROVED";
+}
+
+const RESOURCES: DemoResource[] = [
+  { title: "Chapitre 1 — Programmation linéaire et méthode du simplexe", type: "COURSE", ec: "MIO1111", author: "a.diallo", keywords: "simplexe, programmation linéaire, base", description: "Forme standard, base réalisable, tableau du simplexe." },
+  { title: "Chapitre 2 — Dualité", type: "COURSE", ec: "MIO1111", author: "a.diallo", keywords: "dualité, programme dual", description: "Construction du dual, théorèmes de dualité faible et forte." },
+  { title: "TD 1 — Modélisation de problèmes linéaires", type: "TUTORIAL", ec: "MIO1111", author: "a.diallo", keywords: "modélisation, td", description: "Exercices de mise en équation." },
+  { title: "TD 2 — Simplexe et dualité", type: "TUTORIAL", ec: "MIO1111", author: "a.diallo", keywords: "simplexe, dualité, td", description: "Application du simplexe ; interprétation du dual." },
+  { title: "TP 1 — Résolution avec un solveur", type: "LAB", ec: "MIO1111", author: "a.diallo", keywords: "solveur, python, pulp", description: "Prise en main d'un solveur de programmation linéaire." },
+  { title: "Démonstration du simplexe en vidéo", type: "VIDEO", ec: "MIO1111", author: "a.diallo", keywords: "simplexe, vidéo", description: "Vidéo de démonstration (lien externe).", link: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+  { title: "Sujet d'examen — Optimisation linéaire (session 1)", type: "EXAM", ec: "MIO1111", author: "a.diallo", keywords: "examen, session 1", description: "Sujet de l'examen de fin de semestre.", publishInDays: 45, approval: "PENDING" },
+  { title: "Notes de préparation du cours (brouillon)", type: "OTHER", ec: "MIO1111", author: "a.diallo", keywords: "préparation", description: "Brouillon non publié.", status: "DRAFT" },
+  { title: "Analyse numérique — Chapitre 1 : erreurs et conditionnement", type: "COURSE", ec: "MIO1112", author: "m.ndiaye", keywords: "erreurs, conditionnement", description: "Arithmétique flottante, conditionnement d'un problème." },
+  { title: "Analyse numérique — Chapitre 2 : résolution de systèmes linéaires", type: "COURSE", ec: "MIO1112", author: "m.ndiaye", keywords: "gauss, lu, systèmes linéaires", description: "Méthodes directes : Gauss, décomposition LU." },
+  { title: "TD — Méthodes itératives", type: "TUTORIAL", ec: "MIO1112", author: "m.ndiaye", keywords: "jacobi, gauss-seidel", description: "Exercices sur les méthodes de Jacobi et Gauss-Seidel." },
+  { title: "Python — Les bases du langage", type: "COURSE", ec: "MIO1121", author: "m.ndiaye", keywords: "python, bases, variables", description: "Types, structures de contrôle, fonctions." },
+  { title: "Python — Programmation orientée objet", type: "COURSE", ec: "MIO1121", author: "m.ndiaye", keywords: "python, objet, classes", description: "Classes, héritage, méthodes spéciales." },
+  { title: "TP — Manipulation de données avec pandas", type: "LAB", ec: "MIO1121", author: "m.ndiaye", keywords: "pandas, données, python", description: "Lecture, filtrage et agrégation de données." },
+  { title: "Bases de données — Modèle relationnel", type: "COURSE", ec: "MIO1122", author: "m.ndiaye", keywords: "relationnel, sql, normalisation", description: "Modèle relationnel, clés, formes normales." },
+  { title: "TD — Requêtes SQL", type: "TUTORIAL", ec: "MIO1122", author: "m.ndiaye", keywords: "sql, requêtes, jointures", description: "Sélections, jointures, agrégats." },
+  { title: "Optimisation combinatoire — Introduction", type: "COURSE", ec: "MIO1211", author: "a.diallo", keywords: "combinatoire, complexité", description: "Problèmes combinatoires classiques et complexité.", publishInDays: 60 },
+  { title: "Théorie des graphes — Plus courts chemins", type: "COURSE", ec: "MIO1212", author: "m.ndiaye", keywords: "graphes, dijkstra, bellman-ford", description: "Algorithmes de Dijkstra et de Bellman-Ford." },
+  { title: "Statistique inférentielle — Estimation", type: "COURSE", ec: "MIO1221", author: "a.diallo", keywords: "estimation, intervalles de confiance", description: "Estimateurs, biais, intervalles de confiance." },
+  { title: "Banque d'exercices partagée (enseignants)", type: "OTHER", ec: "MIO1111", author: "a.diallo", keywords: "exercices, banque", description: "Exercices réutilisables, partagés entre enseignants.", visibility: "TEACHERS" },
+];
+
+/** Crée les ressources de démonstration absentes, avec leur fichier et quelques consultations. */
+async function seedResources(userIds: Map<string, string>, yearId: string, yearLabel: string): Promise<number> {
+  const storage = new LocalStorage(path.resolve(process.env.STORAGE_LOCAL_DIR ?? "storage"));
+  if (process.env.STORAGE_DRIVER === "s3") {
+    console.warn("STORAGE_DRIVER=s3 : les fichiers de démonstration sont écrits dans le stockage local uniquement.");
+  }
+  const students = USERS.filter((u) => u.roles.includes("STUDENT")).map((u) => userIds.get(u.login)!);
+  const now = Date.now();
+  let index = 0;
+
+  for (const demo of RESOURCES) {
+    index += 1;
+    const authorId = userIds.get(demo.author)!;
+    const existing = await db.resource.findFirst({ where: { title: demo.title, authorId } });
+    if (existing) continue;
+    const ec = await db.courseElement.findFirstOrThrow({ where: { code: demo.ec } });
+
+    let content: { storageKey?: string; externalUrl?: string; originalName?: string; mimeType?: string; format: string; sizeBytes?: number };
+    if (demo.link) {
+      content = { externalUrl: demo.link, format: "lien" };
+    } else {
+      const bytes = makePdf(demo.title, [demo.description, "", `EC : ${ec.title}`, "Document de démonstration — RessourcesPéda (UASZ)."]);
+      const storageKey = `${yearLabel}/${randomUUID()}`;
+      await storage.put(storageKey, Readable.toWeb(Readable.from(bytes)) as ReadableStream<Uint8Array>);
+      const slug = demo.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").toLowerCase().slice(0, 60);
+      content = { storageKey, originalName: `${slug}.pdf`, mimeType: "application/pdf", format: "pdf", sizeBytes: bytes.length };
+    }
+
+    const status = demo.status ?? "PUBLISHED";
+    const publishAt =
+      demo.publishInDays !== undefined ? new Date(now + demo.publishInDays * 86_400_000) : demo.type === "EXAM" ? new Date(now) : null;
+    const resource = await db.resource.create({
+      data: {
+        title: demo.title,
+        description: demo.description,
+        type: demo.type,
+        keywords: demo.keywords,
+        status,
+        visibility: demo.visibility ?? "EC_STUDENTS",
+        publishAt: status === "PUBLISHED" ? publishAt : null,
+        approvalStatus: demo.approval ?? "NOT_REQUIRED",
+        everPublished: status === "PUBLISHED",
+        authorId,
+        academicYearId: yearId,
+        createdAt: new Date(now - (30 - index) * 86_400_000),
+        courseElements: { create: { courseElementId: ec.id } },
+        versions: { create: { number: 1, comment: "Version initiale", authorId, ...content } },
+      },
+      include: { versions: true },
+    });
+
+    // Quelques consultations pour animer les statistiques (déterministe).
+    if (status === "PUBLISHED" && !demo.publishInDays && (demo.visibility ?? "EC_STUDENTS") === "EC_STUDENTS") {
+      const logs = students.flatMap((userId, s) =>
+        (index + s) % 3 === 0 ? [] : [
+          { userId, resourceId: resource.id, versionId: resource.versions[0].id, kind: "VIEW" as const, createdAt: new Date(now - ((index + s) % 20) * 86_400_000) },
+          ...((index + s) % 2 === 0 ? [{ userId, resourceId: resource.id, versionId: resource.versions[0].id, kind: "DOWNLOAD" as const, createdAt: new Date(now - ((index + s) % 15) * 86_400_000) }] : []),
+        ],
+      );
+      await db.accessLog.createMany({ data: logs });
+    }
+  }
+  return db.resource.count();
 }
 
 main()

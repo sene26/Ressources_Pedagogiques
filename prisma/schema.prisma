@@ -1,6 +1,5 @@
 // Schéma de données RessourcesPéda — MariaDB (fournisseur Prisma « mysql »).
-// Voir docs/modele-donnees.md. Le Lot 1 couvre les comptes et l'organisation pédagogique ;
-// les ressources, versions et consultations arrivent au Lot 2.
+// Voir docs/modele-donnees.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -23,6 +22,41 @@ enum Cycle {
   MASTER
 }
 
+enum ResourceType {
+  COURSE
+  TUTORIAL
+  LAB
+  EXAM
+  SOLUTION
+  VIDEO
+  LINK
+  OTHER
+}
+
+enum ResourceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Visibility {
+  PRIVATE
+  TEACHERS
+  EC_STUDENTS
+}
+
+enum ApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AccessKind {
+  VIEW
+  DOWNLOAD
+}
+
 /// Utilisateur de la plateforme. Un utilisateur peut cumuler plusieurs rôles (F2).
 model User {
   id                 String   @id @default(uuid()) @db.Char(36)
@@ -43,6 +77,10 @@ model User {
   managedPrograms     ProgramManagerAssignment[]
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]
+  resources           Resource[]          @relation("ResourceAuthor")
+  approvedResources   Resource[]          @relation("ResourceApprover")
+  resourceVersions    ResourceVersion[]
+  accessLogs          AccessLog[]
 
   @@index([lastName, firstName])
   @@map("users")
@@ -120,6 +158,7 @@ model CourseElement {
   teachingUnit   TeachingUnit @relation(fields: [teachingUnitId], references: [id], onDelete: Restrict)
 
   teachingAssignments TeachingAssignment[]
+  resources           ResourceCourseElement[]
 
   @@unique([teachingUnitId, code])
   @@map("course_elements")
@@ -136,6 +175,7 @@ model AcademicYear {
 
   teachingAssignments TeachingAssignment[]
   enrollments         Enrollment[]
+  resources           Resource[]
 
   @@map("academic_years")
 }
@@ -210,4 +250,98 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// Ressource pédagogique (F9). Visibilité calculée par src/server/policies/resource-policy.ts (RG2 à RG7).
+model Resource {
+  id              String         @id @default(uuid()) @db.Char(36)
+  title           String         @db.VarChar(200)
+  description     String         @db.Text
+  type            ResourceType
+  /// Mots-clés normalisés, séparés par des virgules (MariaDB n'a pas de type tableau).
+  keywords        String         @default("") @db.VarChar(500)
+  status          ResourceStatus @default(DRAFT)
+  visibility      Visibility     @default(PRIVATE)
+  /// Date à partir de laquelle une ressource publiée est visible (F13) ; obligatoire pour examens et corrigés (A5).
+  publishAt       DateTime?
+  /// Validation des sujets d'examen et corrigés par le responsable de formation (RG5, F14).
+  approvalStatus  ApprovalStatus @default(NOT_REQUIRED)
+  approvedById    String?        @db.Char(36)
+  approvedAt      DateTime?
+  rejectionReason String?        @db.VarChar(500)
+  /// Vrai dès la première publication : une ressource déjà publiée ne peut plus être supprimée, seulement archivée (A7, RG9).
+  everPublished   Boolean        @default(false)
+  authorId        String         @db.Char(36)
+  academicYearId  String         @db.Char(36)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  author         User                    @relation("ResourceAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  approvedBy     User?                   @relation("ResourceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  academicYear   AcademicYear            @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  courseElements ResourceCourseElement[]
+  versions       ResourceVersion[]
+  accessLogs     AccessLog[]
+
+  @@index([status, visibility, academicYearId])
+  @@index([authorId])
+  @@fulltext([title, keywords, description])
+  @@fulltext([title])
+  @@map("resources")
+}
+
+/// Rattachement d'une ressource à un ou plusieurs EC (RG1).
+model ResourceCourseElement {
+  resourceId      String        @db.Char(36)
+  courseElementId String        @db.Char(36)
+  resource        Resource      @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  courseElement   CourseElement @relation(fields: [courseElementId], references: [id], onDelete: Restrict)
+
+  @@id([resourceId, courseElementId])
+  @@index([courseElementId])
+  @@map("resource_course_elements")
+}
+
+/// Version d'une ressource (RG6) : soit un fichier stocké, soit un lien externe.
+model ResourceVersion {
+  id           String   @id @default(uuid()) @db.Char(36)
+  resourceId   String   @db.Char(36)
+  number       Int
+  /// Clé aléatoire dans le stockage ; jamais exposée au navigateur.
+  storageKey   String?  @db.VarChar(100)
+  externalUrl  String?  @db.VarChar(1000)
+  originalName String?  @db.VarChar(255)
+  mimeType     String?  @db.VarChar(100)
+  /// Format affiché et filtrable (pdf, docx, mp4, lien…).
+  format       String   @db.VarChar(20)
+  sizeBytes    Int?
+  comment      String   @default("") @db.VarChar(500)
+  authorId     String   @db.Char(36)
+  createdAt    DateTime @default(now())
+
+  resource   Resource    @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  author     User        @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  accessLogs AccessLog[]
+
+  @@unique([resourceId, number])
+  @@index([format])
+  @@map("resource_versions")
+}
+
+/// Consultation ou téléchargement (RG10). Conservé, anonymisé, après suppression de l'utilisateur ou de la ressource.
+model AccessLog {
+  id         String     @id @default(uuid()) @db.Char(36)
+  userId     String?    @db.Char(36)
+  resourceId String?    @db.Char(36)
+  versionId  String?    @db.Char(36)
+  kind       AccessKind
+  createdAt  DateTime   @default(now())
+
+  user     User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  resource Resource?        @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  version  ResourceVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+
+  @@index([resourceId, kind, createdAt])
+  @@index([userId, resourceId, kind, createdAt])
+  @@map("access_logs")
 }

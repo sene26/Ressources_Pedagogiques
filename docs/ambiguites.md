@@ -121,3 +121,17 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - **Une seule année « en cours »** : MariaDB n'a pas d'index unique partiel. La colonne `isCurrent` vaut `true` ou `NULL`, jamais `false`, et porte un index unique.
 - **Courriel unique, insensible à la casse** : assuré par l'interclassement `_ci` et par un stockage en minuscules.
 - **Sauvegarde** : `mariadb-dump --single-transaction`.
+
+## A18. Fuseau horaire des dates de publication — ✅ par défaut (Lot 2)
+
+**Proposition.** Les dates saisies, comme une publication programmée, sont en **heure du Sénégal (GMT)**, qui n'a pas d'heure d'été. Elles sont stockées en UTC, ce qui revient au même, et affichées avec le fuseau `Africa/Dakar`.
+
+## A19. Précisions sur les droits liés aux ressources — ✅ par défaut (Lot 2)
+
+- Un **responsable de formation** est considéré comme un enseignant pour la consultation : il voit les ressources partagées « Enseignants ».
+- L'**administrateur** voit tout, peut archiver ou supprimer définitivement, mais **ne dépose pas** de ressource s'il n'est pas affecté à l'EC (RG2 s'applique à tous).
+- Seul l'**auteur** modifie le contenu et dépose des versions. L'auteur ou l'administrateur change le statut.
+- « Supprimer » un brouillon jamais publié l'efface, fichier compris. Si la ressource a déjà été publiée, même une seule fois, elle est **archivée** (RG9).
+- Une ressource **restaurée** revient en brouillon : sa republication est un acte explicite.
+- Une **nouvelle version** est déposée avec un commentaire obligatoire. Un sujet déjà validé repasse « en attente de validation » (A5).
+- L'aperçu dans le navigateur n'est proposé que pour les formats sûrs (PDF, images, audio, vidéo). Les fichiers HTML, texte et code sont toujours téléchargés, pour éviter toute exécution de script (XSS).

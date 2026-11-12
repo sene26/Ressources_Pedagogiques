@@ -1,26 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_ADMIN } from "./e2e-env";
+import { STUDENT, TEACHER, login, logout } from "./helpers";
 
 /**
  * Critère de fin du Lot 1 : un administrateur crée une formation, un enseignant et un étudiant ;
  * chacun se connecte avec son rôle.
  */
-
-const TEACHER = { email: "awa.diallo@uasz.test", password: "enseignant-2026" };
-const STUDENT = { email: "fatou.sarr@uasz.test", password: "etudiant-2026" };
-
-async function login(page: Page, email: string, password: string) {
-  await page.goto("/connexion");
-  await page.getByLabel("Adresse électronique").fill(email);
-  await page.getByLabel("Mot de passe").fill(password);
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByTestId("current-user")).toBeVisible();
-}
-
-async function logout(page: Page) {
-  await page.getByRole("button", { name: "Se déconnecter" }).click();
-  await expect(page).toHaveURL(/\/connexion/);
-}
 
 async function createUser(page: Page, data: { lastName: string; firstName: string; email: string; password: string; role: string }) {
   await page.goto("/gestion/utilisateurs/nouveau");

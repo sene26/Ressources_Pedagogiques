@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { E2E_ADMIN, e2eEnv } from "./e2e-env";
 
 /**
@@ -10,6 +11,7 @@ export default async function globalSetup(): Promise<void> {
   if (!env.DATABASE_URL.split("/").pop()?.includes("test")) throw new Error("La base e2e doit contenir « test » dans son nom.");
   Object.assign(process.env, env);
   execSync("npx prisma migrate deploy", { stdio: "pipe", env: process.env });
+  rmSync(env.STORAGE_LOCAL_DIR, { recursive: true, force: true });
 
   const { PrismaClient } = await import("@prisma/client");
   const { hash } = await import("@node-rs/argon2");

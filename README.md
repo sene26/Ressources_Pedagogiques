@@ -2,7 +2,7 @@
 
 Plateforme web de centralisation, de partage, de versionnement et de suivi des ressources pédagogiques de l'Université Assane Seck de Ziguinchor.
 
-> **État :** Lot 0 (Conception) validé · **Lot 1 (Socle) terminé** : connexion, rôles, formations, UE, EC, affectations, inscriptions. Les ressources arrivent au Lot 2.
+> **État :** Lots 0 à 2 terminés : connexion, rôles, maquette, affectations, inscriptions, dépôt et versions des ressources, publication, archivage, téléchargements contrôlés.
 
 ## Prérequis
 
@@ -64,7 +64,7 @@ Tous les comptes ont le mot de passe défini par `DEMO_PASSWORD` dans `.env`.
 | `m.ndiaye@uasz.test` | Enseignant |
 | `f.sarr@uasz.test`, `i.badji@uasz.test`, `m.diatta@uasz.test`, `o.sane@uasz.test`, `a.coly@uasz.test` | Étudiants (Master 1 MIO, 2026-2027) |
 
-La formation de démonstration « Master MIO » comporte 4 semestres, 9 UE et 13 EC. Ses intitulés sont fictifs et sont à remplacer par la maquette réelle.
+La formation de démonstration « Master MIO » comporte 4 semestres, 9 UE et 13 EC, ainsi que 20 ressources (cours, TD, TP, vidéo, sujet d'examen en attente de validation, brouillon, ressource partagée entre enseignants). Ses intitulés sont fictifs et sont à remplacer par la maquette réelle.
 
 ## Tests
 
@@ -74,7 +74,7 @@ Copier la configuration de test. Le nom de la base doit contenir « test » : ce
 cp .env.test.example .env.test
 ```
 
-Lancer les tests unitaires et d'intégration (59 tests).
+Lancer les tests unitaires et d'intégration.
 
 ```bash
 npm test
