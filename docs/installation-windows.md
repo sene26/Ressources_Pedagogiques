@@ -78,7 +78,7 @@ L'installation prend quelques minutes.
 4. Modifiez ces lignes, en gardant les guillemets :
 
    ```
-   DATABASE_URL="mysql://root:VOTRE_MOT_DE_PASSE_ROOT@localhost:3306/ressources_peda"
+   DATABASE_URL="mysql://root:VOTRE_MOT_DE_PASSE_ROOT@127.0.0.1:3306/ressources_peda"
    AUTH_SECRET="premier secret généré"
    FILE_TOKEN_SECRET="deuxième secret généré"
    CRON_SECRET="troisième secret généré"
@@ -86,7 +86,8 @@ L'installation prend quelques minutes.
    ```
 
    - Remplacez `VOTRE_MOT_DE_PASSE_ROOT` par le mot de passe choisi à l'étape 2.
-   - Avec XAMPP, dont le mot de passe est vide, écrivez : `mysql://root:@localhost:3306/ressources_peda`.
+   - Avec XAMPP, dont le mot de passe est vide, écrivez : `mysql://root:@127.0.0.1:3306/ressources_peda`.
+   - Écrivez bien `127.0.0.1` et non `localhost` : sur certains Windows, « localhost » ne mène pas à MariaDB.
    - `DEMO_PASSWORD` sera le mot de passe de tous les comptes de démonstration (10 caractères au moins).
 
 5. Enregistrez et fermez le Bloc-notes.
@@ -119,7 +120,7 @@ Démarrez-la :
 npm start
 ```
 
-Ouvrez **http://localhost:3000** dans votre navigateur. Pour arrêter l'application, appuyez sur Ctrl+C dans la fenêtre PowerShell. Pour la relancer plus tard, refaites l'étape 5, puis `npm start`.
+Ouvrez **http://127.0.0.1:3000** dans votre navigateur (ou http://localhost:3000). Pour arrêter l'application, appuyez sur Ctrl+C dans la fenêtre PowerShell. Pour la relancer plus tard, refaites l'étape 5, puis `npm start`.
 
 ## Comptes de démonstration
 
