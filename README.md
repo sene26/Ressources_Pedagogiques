@@ -114,6 +114,7 @@ Détail et correspondance avec les règles de gestion : [`docs/tests.md`](docs/t
 | Document | Contenu |
 | --- | --- |
 | [Guide utilisateur](docs/guide-utilisateur.md) | Mode d'emploi par rôle |
+| [Installation sous Windows](docs/installation-windows.md) | Tester sur son ordinateur, sans Docker |
 | [Déploiement](docs/deploiement.md) | Docker, HTTPS, stockage S3, sauvegardes et restauration, mises à jour |
 | [Sécurité](docs/securite.md) | Mesures en place, limites connues |
 | [Tests](docs/tests.md) | Règles de gestion → tests, mesures de performance |
