@@ -2,7 +2,7 @@
 
 Plateforme web de centralisation, de partage, de versionnement et de suivi des ressources pédagogiques de l'Université Assane Seck de Ziguinchor.
 
-> **État :** Lot 0 (Conception) — documents en attente de validation. Les instructions d'installation et de lancement seront ajoutées au Lot 1.
+> **État :** Lot 0 (Conception) validé ; Lot 1 (Socle) en cours. Les instructions d'installation et de lancement seront ajoutées au Lot 1.
 
 ## Documentation
 
@@ -18,4 +18,4 @@ Plateforme web de centralisation, de partage, de versionnement et de suivi des r
 
 ## Choix techniques
 
-Next.js + TypeScript · PostgreSQL + Prisma · Auth.js · Tailwind CSS · Vitest + Playwright · Docker Compose.
+Next.js + TypeScript · MariaDB + Prisma · Auth.js · Tailwind CSS · Vitest + Playwright · Docker Compose.

@@ -107,7 +107,7 @@ erDiagram
         string title
         text description
         enum type "COURSE|TUTORIAL|LAB|EXAM|SOLUTION|VIDEO|LINK|OTHER"
-        string[] keywords
+        string keywords "séparés par des virgules"
         enum status "DRAFT|PUBLISHED|ARCHIVED"
         enum visibility "PRIVATE|TEACHERS|EC_STUDENTS"
         datetime publishAt
@@ -118,7 +118,6 @@ erDiagram
         uuid authorId FK
         uuid academicYearId FK
         uuid duplicatedFromId FK
-        tsvector searchVector
         datetime createdAt
         datetime updatedAt
     }
@@ -184,16 +183,16 @@ Entité technique non représentée : `PasswordResetToken` (userId, tokenHash, e
 
 | Table | Contrainte / index | Raison |
 | --- | --- | --- |
-| `User` | `email` unique (insensible à la casse, via `citext` ou stockage en minuscules) | F1 |
+| `User` | `email` unique (stocké en minuscules ; interclassement `_ci` insensible à la casse) | F1 |
 | `UserRole` | clé primaire (`userId`, `role`) | plusieurs rôles par utilisateur (F2) |
 | `Semester` | unique (`programId`, `number`) | RG1 |
 | `TeachingUnit`, `CourseElement` | unique (`semesterId`, `code`) / (`teachingUnitId`, `code`) | codes uniques dans leur parent |
-| `AcademicYear` | index unique partiel `WHERE is_current` | une seule année en cours (A16) |
+| `AcademicYear` | colonne générée `current_flag` = `IF(is_current, 1, NULL)` avec index unique (MariaDB n'a pas d'index partiel ; les NULL ne se heurtent pas) | une seule année en cours (A16) |
 | `TeachingAssignment` | clé primaire (`teacherId`, `courseElementId`, `academicYearId`) | RG2 |
 | `Enrollment` | unique (`studentId`, `academicYearId`) | un étudiant a une seule inscription par an |
 | `ResourceEc` | clé primaire (`resourceId`, `courseElementId`) ; ≥ 1 ligne par ressource, vérifié par le service | RG1 |
 | `ResourceVersion` | unique (`resourceId`, `number`) ; CHECK (`storageKey` IS NOT NULL) XOR (`externalUrl` IS NOT NULL) ; CHECK `sizeBytes ≤ 100 Mo` | RG6, RG8 |
-| `Resource` | index GIN sur `searchVector` ; index (`status`, `visibility`, `academicYearId`) ; index `authorId` | F18, F19, performance |
+| `Resource` | index `FULLTEXT` (`title`, `keywords`, `description`) et `FULLTEXT` (`title`) ; index (`status`, `visibility`, `academicYearId`) ; index `authorId` | F18, F19, performance |
 | `AccessLog` | index (`resourceId`, `kind`, `createdAt`) | statistiques F23, F24 |
 | `Favorite` | clé primaire (`userId`, `resourceId`) | F21 |
 | `AuditLog` | index (`entityType`, `entityId`), index `createdAt` | F25 |

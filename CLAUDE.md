@@ -35,13 +35,13 @@ Les interprétations retenues pour les points ambigus sont dans [`docs/ambiguite
 ## Choix techniques
 
 - **Next.js** (App Router) + **TypeScript** strict, application full-stack.
-- **PostgreSQL** + **Prisma** ; recherche plein texte PostgreSQL (configuration `french` + `unaccent`).
+- **MariaDB** (≥ 10.11 LTS) + **Prisma** (fournisseur `mysql`) ; recherche plein texte par index `FULLTEXT` InnoDB, en interclassement `utf8mb4_unicode_ci` (insensible à la casse et aux accents). Choix de la porteuse du projet (A17).
 - **Auth.js** (NextAuth v5), fournisseur « identifiants » ; mots de passe hachés avec **argon2**.
 - **Stockage des fichiers** : interface `StorageDriver`, avec une implémentation locale (développement) et une implémentation S3 (production).
 - **Tailwind CSS** ; composants accessibles (HTML sémantique, labels, focus visible).
 - **Zod** pour valider toutes les entrées (formulaires, Server Actions, routes).
-- **Vitest** (unitaires et intégration, base de test PostgreSQL) ; **Playwright** (quelques parcours de bout en bout).
-- **Docker** + `docker-compose.yml` (application, PostgreSQL, sauvegarde).
+- **Vitest** (unitaires et intégration, base de test MariaDB) ; **Playwright** (quelques parcours de bout en bout).
+- **Docker** + `docker-compose.yml` (application, MariaDB, sauvegarde).
 
 Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modèle de données : [`docs/modele-donnees.md`](docs/modele-donnees.md).
 
@@ -68,7 +68,7 @@ Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modè
 
 | Lot | Contenu | État |
 | --- | --- | --- |
-| 0 | Conception | En attente de validation |
+| 0 | Conception | Validé (propositions par défaut, MariaDB) |
 | 1 | Socle (F1, F2, F5–F7) | À faire |
 | 2 | Ressources (F9–F11) | À faire |
 | 3 | Consultation (F12, F17–F20) | À faire |

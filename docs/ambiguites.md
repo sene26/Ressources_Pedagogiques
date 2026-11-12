@@ -1,13 +1,13 @@
 # Points ambigus et solutions proposées
 
 Ce document recense les points du cahier des charges qui admettent plusieurs lectures. Pour chacun, une solution est proposée.
-**Chaque point est à valider ou à corriger par la porteuse du projet.** Une fois validées, ces décisions font foi pour les lots suivants.
+Le 12/11/2026, la porteuse du projet a demandé d'**adopter les propositions par défaut**, quitte à les améliorer ensuite. Elles font donc foi pour les lots suivants tant qu'elles ne sont pas modifiées.
 
-Légende de l'état : ⏳ à valider · ✅ validé · ✏️ modifié
+Légende de l'état : ⏳ à valider · ✅ par défaut (proposition adoptée en attendant une révision) · ✏️ modifié par la porteuse du projet
 
 ---
 
-## A1. « Niveau » : de la formation ou de l'inscription ? — ⏳
+## A1. « Niveau » : de la formation ou de l'inscription ? — ✅ par défaut
 
 **Constat.** L'entité *Formation* porte un « niveau (Licence, Master) », et l'*Inscription* porte aussi un « niveau ». Les données de démonstration parlent de « Master 1 MIO ». On ne sait pas si « Master 1 MIO » est une formation à part entière ou l'année 1 de la formation « Master MIO ».
 
@@ -18,19 +18,19 @@ Légende de l'état : ⏳ à valider · ✅ validé · ✏️ modifié
 - L'*Inscription* porte (étudiant, formation, niveau, année universitaire). « Master 1 MIO » correspond donc à la formation *Master MIO* au niveau 1.
 - Un EC est visible des étudiants de niveau *n* si son semestre appartient au niveau *n* (RG4, RG7).
 
-## A2. La maquette varie-t-elle d'une année à l'autre ? — ⏳
+## A2. La maquette varie-t-elle d'une année à l'autre ? — ✅ par défaut
 
 **Constat.** Les affectations, les inscriptions et les ressources dépendent de l'année universitaire, mais pas la maquette (formation, UE, EC).
 
 **Proposition.** En version 1, la maquette n'est pas versionnée par année. Un EC supprimé de la maquette est **archivé** (F5), pas effacé, ce qui préserve l'historique des ressources. Les ressources restent rattachées à une année universitaire. F15 permet de les dupliquer d'une année sur l'autre.
 
-## A3. Rattachement d'un responsable à sa formation — ⏳
+## A3. Rattachement d'un responsable à sa formation — ✅ par défaut
 
 **Constat.** Le cahier des charges définit le rôle de responsable de formation, mais le modèle de données ne dit pas de quelle(s) formation(s) il est responsable.
 
 **Proposition.** Ajouter l'entité `ProgramManagerAssignment` (utilisateur, formation). Un responsable n'agit que sur les formations qui lui sont rattachées. L'administrateur a tous les droits du responsable sur toutes les formations.
 
-## A4. Qui voit quoi, exactement ? (RG2 à RG7) — ⏳
+## A4. Qui voit quoi, exactement ? (RG2 à RG7) — ✅ par défaut
 
 **Constat.** Les règles de statut, de visibilité et de date se croisent, et certains cas ne sont pas couverts : brouillon partagé, ressource « Étudiants » vue par un enseignant, droits du responsable…
 
@@ -48,7 +48,7 @@ Légende de l'état : ⏳ à valider · ✅ validé · ✏️ modifié
 Les ressources `ARCHIVED` ne sont visibles que de l'auteur, du responsable et de l'administrateur.
 Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit pas : pour être validée, une ressource doit avoir une autre visibilité.
 
-## A5. Validation des sujets d'examen et des corrigés (RG5, F14) — ⏳
+## A5. Validation des sujets d'examen et des corrigés (RG5, F14) — ✅ par défaut
 
 **Proposition.**
 - Ajouter un champ `approvalStatus` : `NOT_REQUIRED`, `PENDING`, `APPROVED` ou `REJECTED` (avec un motif).
@@ -58,33 +58,33 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - Si l'auteur est lui-même responsable de la formation, il peut valider (cas fréquent dans les petites équipes). L'action est tracée au journal.
 - Avant le Lot 4 (qui livre F14), les examens et corrigés ne peuvent pas être rendus visibles des étudiants. C'est le comportement le plus sûr.
 
-## A6. Ressource rattachée à plusieurs EC (RG1 et RG2) — ⏳
+## A6. Ressource rattachée à plusieurs EC (RG1 et RG2) — ✅ par défaut
 
 **Proposition.** Pour déposer une ressource sur plusieurs EC, l'enseignant doit être affecté à **chacun** de ces EC pour l'année de la ressource. Les EC peuvent appartenir à des formations différentes, par exemple un cours mutualisé. La validation d'un sujet d'examen peut alors être faite par le responsable de **l'une** des formations concernées.
 
-## A7. Statut et date de publication (F11 et F13) — ⏳
+## A7. Statut et date de publication (F11 et F13) — ✅ par défaut
 
 **Proposition.** On n'ajoute pas de statut « Programmée ». Une ressource `PUBLISHED` dont la `publishAt` est dans le futur est considérée comme **programmée** : l'interface l'affiche ainsi, et elle reste invisible des étudiants jusqu'à cette date. Ce calcul se fait au moment de la lecture, ce qui évite une tâche planifiée pour rendre la ressource visible. Une tâche périodique ne sert qu'à envoyer les notifications à la date de publication (F22, Lot 4).
 - « Dépublier » remet la ressource en `DRAFT`.
 - Un brouillon peut être **supprimé** définitivement par son auteur s'il n'a jamais été publié. Une ressource déjà publiée ne peut être qu'archivée (RG9).
 
-## A8. Versions et liens externes (RG6) — ⏳
+## A8. Versions et liens externes (RG6) — ✅ par défaut
 
 **Proposition.** Une version contient **soit** un fichier, **soit** un lien externe. Changer le fichier ou le lien crée une nouvelle version. Modifier le titre, la description ou les mots-clés ne crée pas de version : c'est tracé au journal. La version en vigueur est la plus récente. Les étudiants et les collègues ne voient que celle-là. Les versions précédentes sont visibles de l'auteur, du responsable et de l'administrateur (RG6).
 
-## A9. Formats « code source » (RG8) — ⏳
+## A9. Formats « code source » (RG8) — ✅ par défaut
 
 **Proposition.** Liste fermée et configurable : `.py`, `.ipynb`, `.java`, `.c`, `.h`, `.cpp`, `.js`, `.ts`, `.html`, `.css`, `.sql`, `.r`, `.m`, `.sh`, `.json`, `.csv`, `.md`. Ajout de `.csv` pour les jeux de données cités au §1. Le type réel du fichier est contrôlé (signature binaire) en plus de l'extension. Les liens externes acceptés sont : YouTube, Google Drive et toute URL `https://` (type « lien »).
 
-## A10. EC « suivi » pour les notifications (F22) — ⏳
+## A10. EC « suivi » pour les notifications (F22) — ✅ par défaut
 
 **Proposition.** Un étudiant suit automatiquement les EC de son inscription en cours. Un enseignant suit automatiquement les EC qui lui sont affectés. Chacun peut suivre ou ne plus suivre un EC (entité `EcSubscription`), et désactiver les courriels dans son profil.
 
-## A11. Profil : formation et niveau (F4) — ⏳
+## A11. Profil : formation et niveau (F4) — ✅ par défaut
 
 **Proposition.** La formation et le niveau affichés dans le profil viennent de l'**inscription** de l'année en cours. Ils ne sont pas saisis librement, ce qui garde une seule source de vérité. La photo est facultative, redimensionnée à 256 px et compressée en WebP.
 
-## A12. Données personnelles et statistiques (loi 2008-12, RG10) — ⏳
+## A12. Données personnelles et statistiques (loi 2008-12, RG10) — ✅ par défaut
 
 **Proposition.**
 - Les tableaux de bord F23 et F24 n'affichent que des **chiffres agrégés** : jamais la liste nominative des étudiants qui ont consulté une ressource.
@@ -92,20 +92,32 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - Une vue répétée par le même utilisateur sur la même ressource dans un intervalle de 30 minutes n'est comptée qu'une fois, pour éviter de gonfler les statistiques.
 - Une mention d'information (finalités, durée, droits d'accès et de rectification) sera ajoutée au Lot 6. Une **déclaration auprès de la CDP** (Commission de protection des données personnelles) relève de l'université.
 
-## A13. Authentification : SSO de l'université ? — ⏳
+## A13. Authentification : SSO de l'université ? — ✅ par défaut
 
 **Constat.** Le cahier des charges demande une connexion par courriel et mot de passe. Si l'UASZ dispose d'un annuaire (LDAP, CAS, Google Workspace), les étudiants préféreront leurs identifiants habituels.
 
-**Proposition.** La version 1 utilise courriel et mot de passe, comme demandé. Grâce à Auth.js, un fournisseur d'authentification unique pourra être ajouté plus tard sans refonte. **Question :** l'UASZ dispose-t-elle d'un tel service ?
+**Proposition.** La version 1 utilise courriel et mot de passe, comme demandé. Grâce à Auth.js, un fournisseur d'authentification unique pourra être ajouté plus tard sans refonte. **Par défaut :** pas d'authentification unique en version 1 ; seulement courriel et mot de passe.
 
-## A14. Envoi de courriels — ⏳
+## A14. Envoi de courriels — ✅ par défaut
 
-**Proposition.** Configuration SMTP par variables d'environnement. En développement, un conteneur **Mailpit** capture les courriels. **Question :** quel serveur SMTP l'université peut-elle fournir en production ?
+**Proposition.** Configuration SMTP par variables d'environnement. En développement, un conteneur **Mailpit** capture les courriels. **Par défaut :** n'importe quel serveur SMTP, configuré par variables d'environnement. Si aucun n'est configuré, les courriels sont écrits dans le journal de l'application, ce qui ne bloque pas le fonctionnement.
 
-## A15. Hébergement et stockage S3 en production — ⏳
+## A15. Hébergement et stockage S3 en production — ✅ par défaut
 
-**Proposition.** Pour un hébergement sur un serveur de l'université, utiliser **MinIO**, compatible S3 et auto-hébergé, ajouté au `docker-compose.yml` de production. Une sauvegarde quotidienne (`pg_dump` et copie des fichiers) est réalisée par un conteneur dédié, avec une rétention de 14 jours. **Question :** où l'application sera-t-elle hébergée (serveur de l'UASZ, cloud) ?
+**Proposition.** Pour un hébergement sur un serveur de l'université, utiliser **MinIO**, compatible S3 et auto-hébergé, ajouté au `docker-compose.yml` de production. Une sauvegarde quotidienne (`mariadb-dump` et copie des fichiers) est réalisée par un conteneur dédié, avec une rétention de 14 jours. **Par défaut :** hébergement sur un serveur de l'UASZ avec `docker compose`. Le stockage local (volume Docker) est utilisé tant que MinIO n'est pas mis en place ; le basculement se fait par `STORAGE_DRIVER=s3`.
 
-## A16. Année universitaire « en cours » — ⏳
+## A16. Année universitaire « en cours » — ✅ par défaut
 
 **Proposition.** Une seule année est marquée « en cours ». C'est l'administrateur qui la change, explicitement, sans bascule automatique par date. Au changement d'année, les étudiants non réinscrits ne voient plus de ressources (RG7) ; leur compte reste actif.
+
+## A17. Base de données : MariaDB au lieu de PostgreSQL — ✏️ décision de la porteuse du projet
+
+**Décision (12/11/2026).** Le cahier des charges proposait PostgreSQL ; la base retenue est **MariaDB**, version 10.11 LTS ou plus récente.
+
+**Conséquences sur la conception.**
+- Prisma reste l'ORM, avec le fournisseur `mysql`, compatible MariaDB.
+- **Recherche plein texte (F18)** : index `FULLTEXT` InnoDB et `MATCH … AGAINST` en mode booléen, au lieu de `tsvector`. L'interclassement `utf8mb4_unicode_ci` rend la recherche insensible aux accents et à la casse. En revanche, MariaDB ne fait pas de racinisation du français ; la recherche par préfixe (`simplex*`) compense en partie. L'objectif de moins de 2 s pour 10 000 ressources reste atteignable et sera mesuré au Lot 6.
+- **Mots-clés** : MariaDB n'a pas de type tableau. Ils sont stockés dans une colonne texte, séparés par des virgules et normalisés, ce qui permet de les indexer en plein texte.
+- **Une seule année « en cours »** : MariaDB n'a pas d'index unique partiel. On utilise une colonne générée, avec un index unique dessus.
+- **Courriel unique, insensible à la casse** : assuré par l'interclassement `_ci` et par un stockage en minuscules.
+- **Sauvegarde** : `mariadb-dump --single-transaction`.

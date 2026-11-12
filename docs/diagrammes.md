@@ -216,7 +216,7 @@ classDiagram
         +String title
         +String description
         +ResourceType type
-        +String[] keywords
+        +String keywords
         +ResourceStatus status
         +Visibility visibility
         +DateTime publishAt
@@ -462,7 +462,7 @@ sequenceDiagram
     participant RS as ResourceService
     participant P as ResourcePolicy
     participant ST as StorageDriver
-    participant DB as PostgreSQL
+    participant DB as MariaDB
 
     E->>UI: remplit le formulaire + fichier
     UI->>SA: envoi (multipart, flux)

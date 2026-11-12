@@ -30,7 +30,7 @@ flowchart LR
         SA -.session.-> AUTH
     end
 
-    DB[(PostgreSQL<br/>+ index plein texte)]
+    DB[(MariaDB<br/>+ index FULLTEXT)]
     FS[(Fichiers<br/>disque local ou MinIO / S3)]
     SMTP[[Serveur SMTP<br/>Mailpit en dev]]
     CRON[Conteneur cron<br/>notifications + sauvegardes]
@@ -42,7 +42,7 @@ flowchart LR
     STO --> FS
     MAIL --> SMTP
     CRON -->|appel HTTP authentifié| RH
-    CRON -->|pg_dump + copie fichiers| DB
+    CRON -->|mariadb-dump + copie fichiers| DB
 ```
 
 ## 2. Organisation du code (prévue)
@@ -80,7 +80,7 @@ flowchart LR
 │   └── i18n/fr.ts             # libellés et messages d'erreur en français
 ├── tests/
 │   ├── unit/                  # politiques, validations (sans base)
-│   ├── integration/           # services + PostgreSQL de test (RG1–RG10)
+│   ├── integration/           # services + MariaDB de test (RG1–RG10)
 │   └── e2e/                   # Playwright : parcours par rôle
 ├── docker/                    # Dockerfile, scripts de sauvegarde
 ├── docker-compose.yml
@@ -115,8 +115,10 @@ Les pages et les actions ne touchent jamais Prisma directement. Un service :
 
 ### 3.4 Recherche (F18, F19)
 
-- Colonne générée `search_vector` (tsvector, configuration `french` + `unaccent`), pondérée : titre (A), mots-clés (B), description (C). Elle porte un index GIN.
-- Requête `websearch_to_tsquery`, combinée au filtre de visibilité et aux filtres (type, enseignant, année, format), avec un tri par pertinence (`ts_rank`) et une pagination par curseur.
+- Index `FULLTEXT` InnoDB sur (`title`, `keywords`, `description`), interclassement `utf8mb4_unicode_ci` : « résumé » trouve « resume ».
+- Requête `MATCH(...) AGAINST(? IN BOOLEAN MODE)` : chaque mot saisi devient obligatoire et peut être tronqué (`simplex*`). Elle est combinée au filtre de visibilité et aux filtres (type, enseignant, année, format), avec un tri par pertinence et une pagination.
+- Pertinence : le titre compte double (un second `MATCH` sur le titre seul, avec un index `FULLTEXT` dédié).
+- Limites de MariaDB : pas de racinisation du français (« cours » ne trouve pas « course ») et une taille minimale de mot de 3 caractères (`innodb_ft_min_token_size=3`, réglé dans la configuration du conteneur ; la liste de mots vides InnoDB par défaut est en anglais, une liste française est fournie). La troncature `*` compense en partie l'absence de racinisation.
 - Objectif : moins de 2 s pour 10 000 ressources, vérifié par un test de charge au Lot 6 avec des données générées.
 
 ### 3.5 Faible débit et mobile
@@ -130,7 +132,7 @@ Les pages et les actions ne touchent jamais Prisma directement. Un service :
 
 | Menace | Mesure |
 | --- | --- |
-| Injection SQL | Prisma (requêtes paramétrées) ; le SQL brut de recherche utilise `Prisma.sql` avec paramètres |
+| Injection SQL | Prisma (requêtes paramétrées) ; le SQL brut de recherche utilise `Prisma.sql` avec paramètres ; les opérateurs booléens saisis par l'utilisateur (`+ - < > ( ) ~ " @`) sont neutralisés avant `AGAINST` |
 | XSS | Échappement React ; aucun `dangerouslySetInnerHTML` ; en-têtes CSP ; fichiers servis avec `X-Content-Type-Options: nosniff` et `Content-Disposition: attachment`, sauf pour les types d'aperçu sûrs (PDF, image, vidéo) |
 | CSRF | Server Actions (vérification d'origine) ; cookies `SameSite=Lax`, `HttpOnly`, `Secure` |
 | Accès non autorisé | Politiques côté serveur sur chaque lecture ; jetons de téléchargement signés et à durée limitée |
@@ -142,7 +144,7 @@ Les pages et les actions ne touchent jamais Prisma directement. Un service :
 
 Un petit conteneur `cron` (image Alpine) :
 - appelle `POST /api/cron/notifications` toutes les 10 minutes, avec un secret partagé `CRON_SECRET`, pour envoyer les notifications des ressources dont la date de publication vient d'être atteinte (F22) ;
-- lance chaque nuit `pg_dump` et une copie des fichiers vers le volume de sauvegarde, avec une rétention de 14 jours ;
+- lance chaque nuit `mariadb-dump --single-transaction` et une copie des fichiers vers le volume de sauvegarde, avec une rétention de 14 jours ;
 - lance chaque mois l'anonymisation des consultations de plus de 2 ans (A12).
 
 ## 4. Déploiement
@@ -151,7 +153,7 @@ Un petit conteneur `cron` (image Alpine) :
 flowchart TB
     subgraph compose["docker-compose.yml"]
         app["app<br/>Next.js (standalone)<br/>port 3000"]
-        db[("db<br/>PostgreSQL 16")]
+        db[("db<br/>MariaDB 10.11")]
         minio[("minio<br/>stockage S3 (prod)")]
         cron["cron<br/>notifications + sauvegardes"]
         mailpit["mailpit<br/>(dev uniquement)"]
@@ -174,7 +176,7 @@ Variables d'environnement (détaillées dans `.env.example`) : `DATABASE_URL`, `
 | Niveau | Outil | Contenu |
 | --- | --- | --- |
 | Unitaires | Vitest | Politiques d'accès (matrice complète), validation des fichiers (RG8), schémas Zod, calcul du niveau à partir du semestre |
-| Intégration | Vitest + PostgreSQL de test (base réinitialisée entre les suites) | Services : RG1 à RG10, versions, archivage, recherche, journal |
+| Intégration | Vitest + MariaDB de test (base réinitialisée entre les suites) | Services : RG1 à RG10, versions, archivage, recherche, journal |
 | Bout en bout | Playwright | Un parcours par lot : connexion par rôle (Lot 1), dépôt puis publication puis visibilité étudiante (Lot 2), recherche en 3 clics (Lot 3), examen programmé et validé (Lot 4), tableau de bord (Lot 5) |
 
 Correspondance règles et tests (nom des tests : `RGx — …`) :
