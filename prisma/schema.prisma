@@ -81,6 +81,9 @@ model User {
   approvedResources   Resource[]          @relation("ResourceApprover")
   resourceVersions    ResourceVersion[]
   accessLogs          AccessLog[]
+  favorites           Favorite[]
+  ecSubscriptions     EcSubscription[]
+  notifications       Notification[]
 
   @@index([lastName, firstName])
   @@map("users")
@@ -159,6 +162,7 @@ model CourseElement {
 
   teachingAssignments TeachingAssignment[]
   resources           ResourceCourseElement[]
+  subscriptions       EcSubscription[]
 
   @@unique([teachingUnitId, code])
   @@map("course_elements")
@@ -271,6 +275,8 @@ model Resource {
   rejectionReason String?        @db.VarChar(500)
   /// Vrai dès la première publication : une ressource déjà publiée ne peut plus être supprimée, seulement archivée (A7, RG9).
   everPublished   Boolean        @default(false)
+  /// Date d'envoi des notifications de publication (F22) : une publication n'est notifiée qu'une fois.
+  notifiedAt      DateTime?
   authorId        String         @db.Char(36)
   academicYearId  String         @db.Char(36)
   createdAt       DateTime       @default(now())
@@ -282,8 +288,11 @@ model Resource {
   courseElements ResourceCourseElement[]
   versions       ResourceVersion[]
   accessLogs     AccessLog[]
+  favorites      Favorite[]
+  notifications  Notification[]
 
   @@index([status, visibility, academicYearId])
+  @@index([status, notifiedAt])
   @@index([authorId])
   @@fulltext([title, keywords, description])
   @@fulltext([title])
@@ -344,4 +353,49 @@ model AccessLog {
   @@index([resourceId, kind, createdAt])
   @@index([userId, resourceId, kind, createdAt])
   @@map("access_logs")
+}
+
+/// Favori (F21).
+model Favorite {
+  userId     String   @db.Char(36)
+  resourceId String   @db.Char(36)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, resourceId])
+  @@map("favorites")
+}
+
+/// Suivi explicite d'un EC (A10) : `muted = false` pour suivre, `true` pour ne plus suivre
+/// un EC suivi automatiquement (inscription ou affectation).
+model EcSubscription {
+  userId          String        @db.Char(36)
+  courseElementId String        @db.Char(36)
+  muted           Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseElement   CourseElement @relation(fields: [courseElementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, courseElementId])
+  @@index([courseElementId, muted])
+  @@map("ec_subscriptions")
+}
+
+/// Notification dans la plateforme (F22), éventuellement doublée d'un courriel.
+model Notification {
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @db.Char(36)
+  resourceId String?   @db.Char(36)
+  message    String    @db.VarChar(300)
+  link       String    @db.VarChar(200)
+  readAt     DateTime?
+  emailedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([emailedAt])
+  @@map("notifications")
 }

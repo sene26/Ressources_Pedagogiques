@@ -144,3 +144,12 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - **« Nouvelle » :** une ressource est signalée comme nouvelle pendant **7 jours** après sa publication.
 - **Aperçu (F12) :** PDF, images, audio, vidéo, YouTube (domaine « nocookie ») et Google Drive. Comme Chrome sur Android n'affiche pas les PDF intégrés, un lien « nouvel onglet » est toujours proposé.
 - **Consultations (RG10) :** l'ouverture d'une fiche compte une **vue**, et un clic sur « Télécharger » compte un **téléchargement**. L'aperçu n'est pas compté comme un téléchargement.
+
+## A21. Validation et notifications — ✅ par défaut (Lot 4)
+
+- **Validation :** la date de publication fait partie de ce qui est validé. Modifier la date, republier ou déposer une nouvelle version d'un sujet le remet « en attente de validation ». Le responsable est prévenu à chaque demande, et l'auteur à chaque validation ou refus.
+- **Qui valide :** le responsable de **l'une** des formations des EC du document, ou l'administrateur (A6).
+- **Moment de la notification :** une ressource est notifiée **une seule fois**, quand elle devient réellement visible : publication immédiate, date programmée atteinte, ou validation d'un sujet. La tâche périodique (toutes les 10 minutes, avec `CRON_SECRET`) traite les dates programmées. Une nouvelle version ne déclenche pas de notification.
+- **Destinataires :** les personnes qui suivent l'EC (inscription ou affectation de l'année, ou suivi explicite) **et** qui ont le droit de voir la ressource. L'auteur n'est jamais notifié de sa propre publication.
+- **Courriels :** les notifications non lues sont regroupées en un seul courriel par personne. Chacun peut désactiver les courriels (page Notifications, puis Profil au Lot 5). Sans serveur SMTP configuré, les courriels sont écrits dans le journal de l'application.
+- **Favoris :** une ressource devenue invisible (archivée, dépubliée) disparaît de la liste des favoris, sans être retirée des favoris.

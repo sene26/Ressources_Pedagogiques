@@ -11,6 +11,9 @@ import { RESOURCE_TYPES, RESOURCE_TYPE_LABELS } from "@/lib/labels";
 import { isTeacher } from "@/server/policies/resource-policy";
 import { requireUser } from "@/server/session";
 import { getCourseElementPage } from "@/server/services/browse";
+import { isFollowing } from "@/server/services/subscriptions";
+import { ToggleButton } from "@/components/toggle-button";
+import { setFollowingAction } from "../../engagement-actions";
 
 export const metadata: Metadata = { title: "EC" };
 
@@ -28,6 +31,7 @@ export default async function CourseElementPage({ params, searchParams }: { para
     throw error;
   });
   const { element } = data;
+  const following = await isFollowing(user.id, element.id);
   const semester = element.teachingUnit.semester;
   const href = (page: number) => {
     const q = new URLSearchParams();
@@ -48,7 +52,10 @@ export default async function CourseElementPage({ params, searchParams }: { para
           <p className="text-sm text-slate-600">Enseignant(s) : {data.teachers.map((t) => `${t.firstName} ${t.lastName}`).join(", ")}</p>
         )}
       </div>
-      {data.canUpload && <Link href={`/ressources/nouvelle?ec=${element.id}`} className="btn btn-primary">+ Déposer dans cet EC</Link>}
+      <div className="flex flex-wrap items-center gap-2">
+        {data.canUpload && <Link href={`/ressources/nouvelle?ec=${element.id}`} className="btn btn-primary">+ Déposer dans cet EC</Link>}
+        <ToggleButton action={setFollowingAction} id={element.id} field="follow" active={following} activeLabel="🔔 Ne plus suivre cet EC" inactiveLabel="🔕 Suivre cet EC" />
+      </div>
       <form method="get" className="flex flex-wrap items-end gap-2">
         <div>
           <label htmlFor="type" className="label">Type</label>

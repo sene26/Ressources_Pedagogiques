@@ -5,14 +5,23 @@ import { hashPassword } from "@/server/password";
 
 export const TEST_PASSWORD = "motdepasse-test-1";
 
-/** Vide toutes les tables métier (la structure et l'historique des migrations sont conservés). */
+/**
+ * Vide toutes les tables métier (la structure et l'historique des migrations sont conservés).
+ * FOREIGN_KEY_CHECKS ne vaut que pour une connexion : tout est donc exécuté dans une transaction,
+ * qui garantit une connexion unique dans le pool de Prisma.
+ */
 export async function resetDatabase(): Promise<void> {
-  const tables = await db.$queryRaw<{ name: string }[]>`
-    SELECT TABLE_NAME AS name FROM information_schema.TABLES
-    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '_prisma_migrations'`;
-  await db.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
-  for (const { name } of tables) await db.$executeRawUnsafe(`TRUNCATE TABLE \`${name}\``);
-  await db.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+  await db.$transaction(
+    async (tx) => {
+      const tables = await tx.$queryRaw<{ name: string }[]>`
+        SELECT TABLE_NAME AS name FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '_prisma_migrations'`;
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+      for (const { name } of tables) await tx.$executeRawUnsafe(`DELETE FROM \`${name}\``);
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+    },
+    { timeout: 30_000 },
+  );
 }
 
 let counter = 0;

@@ -23,6 +23,7 @@ import {
   type ViewerContext,
 } from "../policies/resource-policy";
 import { getStorage } from "../storage";
+import { notifyApprovalRequested } from "./approvals";
 import { loadViewerContext } from "./viewer";
 
 export const RESOURCE_PAGE_SIZE = 20;
@@ -138,8 +139,9 @@ export async function createResource(actor: CurrentUser, input: CreateResourceIn
 
   const state = computePublication(metadata.type, metadata.visibility, publication.mode, publication.publishAt, now);
   const content = await storeContent(input.content, year.label);
+  let created;
   try {
-    return await db.$transaction(async (tx) => {
+    created = await db.$transaction(async (tx) => {
       const resource = await tx.resource.create({
         data: {
           title: metadata.title,
@@ -168,6 +170,8 @@ export async function createResource(actor: CurrentUser, input: CreateResourceIn
     await discardContent(content);
     throw error;
   }
+  if (created.approvalStatus === "PENDING") await notifyApprovalRequested(created.id);
+  return created;
 }
 
 async function assertCourseElementsUsable(courseElementIds: string[]): Promise<void> {
@@ -200,8 +204,8 @@ export async function updateResource(actor: CurrentUser, resourceId: string, inp
   const sameEcs = addedIds.length === 0 && previousIds.length === metadata.courseElementIds.length;
   const approvalStatus = nextApprovalStatus(resource, metadata.type, metadata.visibility, sameEcs && metadata.type === resource.type && metadata.visibility === resource.visibility);
 
-  return db.$transaction(async (tx) => {
-    const updated = await tx.resource.update({
+  const updated = await db.$transaction(async (tx) => {
+    const result = await tx.resource.update({
       where: { id: resourceId },
       data: {
         title: metadata.title,
@@ -215,8 +219,10 @@ export async function updateResource(actor: CurrentUser, resourceId: string, inp
       },
     });
     await audit(tx, { actorId: actor.id, action: "RESOURCE_UPDATED", entityType: "Resource", entityId: resourceId });
-    return updated;
+    return result;
   });
+  if (updated.approvalStatus === "PENDING" && resource.approvalStatus !== "PENDING") await notifyApprovalRequested(resourceId);
+  return updated;
 }
 
 /** Après une modification : une validation acquise est conservée seulement si rien d'important n'a changé (A5). */
@@ -236,13 +242,14 @@ export async function addVersion(actor: CurrentUser, resourceId: string, input: 
   const year = await db.academicYear.findUniqueOrThrow({ where: { id: resource.academicYearId } });
 
   const content = await storeContent(input.content, year.label);
+  const needsRevalidation = resource.approvalStatus === "APPROVED" || resource.approvalStatus === "REJECTED";
+  let version;
   try {
-    return await db.$transaction(async (tx) => {
+    version = await db.$transaction(async (tx) => {
       const last = await tx.resourceVersion.findFirst({ where: { resourceId }, orderBy: { number: "desc" }, select: { number: true } });
-      const version = await tx.resourceVersion.create({
+      const created = await tx.resourceVersion.create({
         data: { resourceId, number: (last?.number ?? 0) + 1, comment, authorId: actor.id, ...content },
       });
-      const needsRevalidation = resource.approvalStatus === "APPROVED" || resource.approvalStatus === "REJECTED";
       await tx.resource.update({
         where: { id: resourceId },
         data: needsRevalidation ? { approvalStatus: "PENDING", approvedById: null, approvedAt: null, rejectionReason: null } : { updatedAt: now },
@@ -252,14 +259,16 @@ export async function addVersion(actor: CurrentUser, resourceId: string, input: 
         action: "RESOURCE_VERSION_ADDED",
         entityType: "Resource",
         entityId: resourceId,
-        details: { number: version.number, comment },
+        details: { number: created.number, comment },
       });
-      return version;
+      return created;
     });
   } catch (error) {
     await discardContent(content);
     throw error;
   }
+  if (needsRevalidation) await notifyApprovalRequested(resourceId);
+  return version;
 }
 
 // ─── Publication, dépublication, archivage (F11, F13, RG9) ─────────────────────
@@ -272,7 +281,9 @@ export async function publishResource(actor: CurrentUser, resourceId: string, in
   const publication = parseInput(publicationSchema, input);
   if (publication.mode === "draft") throw new ValidationError("Choisir « maintenant » ou une date de publication.");
   const state = computePublication(resource.type, resource.visibility, publication.mode, publication.publishAt, now);
-  return setState(actor, resourceId, { ...state, everPublished: true, rejectionReason: null, approvedById: null, approvedAt: null }, state.publishAt && state.publishAt > now ? "RESOURCE_SCHEDULED" : "RESOURCE_PUBLISHED");
+  const updated = await setState(actor, resourceId, { ...state, everPublished: true, rejectionReason: null, approvedById: null, approvedAt: null }, state.publishAt && state.publishAt > now ? "RESOURCE_SCHEDULED" : "RESOURCE_PUBLISHED");
+  if (updated.approvalStatus === "PENDING") await notifyApprovalRequested(resourceId);
+  return updated;
 }
 
 /** Dépublier remet la ressource en brouillon (A7). */

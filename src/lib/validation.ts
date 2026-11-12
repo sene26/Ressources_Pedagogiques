@@ -232,3 +232,9 @@ export const versionCommentSchema = z
   .trim()
   .min(1, "Commentaire de version : champ obligatoire.")
   .max(500, "Commentaire de version : 500 caractères au maximum.");
+
+export const rejectionReasonSchema = z
+  .string({ error: "Motif du refus : champ obligatoire." })
+  .trim()
+  .min(1, "Motif du refus : champ obligatoire.")
+  .max(500, "Motif du refus : 500 caractères au maximum.");

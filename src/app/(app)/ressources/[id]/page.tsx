@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
+import { ApprovalForms } from "@/components/approval-forms";
 import { Preview } from "@/components/preview";
+import { ToggleButton } from "@/components/toggle-button";
 import { PublicationFields } from "@/components/resource-fields";
 import { ResourceBadges } from "@/components/resource-badges";
 import { levelLabel, levelOfSemester } from "@/lib/academic";
@@ -14,7 +16,9 @@ import { previewFor } from "@/lib/preview";
 import { issueFileToken } from "@/server/file-tokens";
 import { requireUser } from "@/server/session";
 import { recordAccess } from "@/server/services/access-log";
+import { isFavorite } from "@/server/services/favorites";
 import { getResourceForViewer } from "@/server/services/resources";
+import { setFavoriteAction } from "../../engagement-actions";
 import {
   archiveResourceAction,
   deleteResourceAction,
@@ -37,6 +41,8 @@ const INFO_MESSAGES: Record<string, string> = {
   archivee: "Ressource archivée.",
   "archivee-rg9": "Cette ressource a déjà été publiée : elle a été archivée et non supprimée (RG9).",
   restauree: "Ressource restaurée (en brouillon).",
+  validee: "Publication validée.",
+  refusee: "Publication refusée ; l'auteur est prévenu.",
 };
 
 /** Fiche d'une ressource : informations, version en vigueur, historique (RG6) et actions de l'auteur. */
@@ -50,6 +56,7 @@ export default async function ResourcePage({ params, searchParams }: Params) {
   });
   await recordAccess({ userId: user.id, resourceId: resource.id, versionId: resource.versions[0]?.id, kind: "VIEW" });
 
+  const favorite = await isFavorite(user.id, resource.id);
   const current = resource.versions[0];
   const currentUrl = current ? `/api/files/${issueFileToken(current.id, user.id)}` : "";
   const preview = current ? previewFor(current, currentUrl) : null;
@@ -63,7 +70,10 @@ export default async function ResourcePage({ params, searchParams }: Params) {
       <header className="space-y-1">
         <p className="text-sm text-slate-600">{RESOURCE_TYPE_LABELS[resource.type]}</p>
         <h1 className="h1">{resource.title}</h1>
-        <ResourceBadges resource={resource} now={now} />
+        <div className="flex flex-wrap items-center gap-2">
+          <ResourceBadges resource={resource} now={now} />
+          <ToggleButton action={setFavoriteAction} id={resource.id} field="favorite" active={favorite} activeLabel="★ Retirer des favoris" inactiveLabel="☆ Ajouter aux favoris" />
+        </div>
         <ul className="text-sm text-slate-600">
           {resource.courseElements.map(({ courseElement: ec }) => {
             const semester = ec.teachingUnit.semester;
@@ -83,6 +93,23 @@ export default async function ResourcePage({ params, searchParams }: Params) {
       {resource.approvalStatus === "REJECTED" && resource.rejectionReason && (isAuthor || permissions.approve) && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-800" role="note">
           Publication refusée par le responsable : {resource.rejectionReason}
+        </p>
+      )}
+
+      {permissions.approve && resource.status === "PUBLISHED" && resource.approvalStatus === "PENDING" && (
+        <section className="card space-y-2 border-amber-300" data-testid="approval">
+          <h2 className="h2">Validation (responsable de formation)</h2>
+          <p className="text-sm">
+            Publication demandée pour le <strong>{resource.publishAt ? formatDateTime(resource.publishAt) : "—"}</strong>. Une fois validé,
+            le document restera invisible des étudiants jusqu&apos;à cette date.
+          </p>
+          <ApprovalForms id={resource.id} returnTo={`/ressources/${resource.id}`} />
+        </section>
+      )}
+      {resource.approvalStatus === "APPROVED" && resource.approvedBy && (isAuthor || permissions.approve) && (
+        <p className="text-sm text-slate-600">
+          Validé par {resource.approvedBy.firstName} {resource.approvedBy.lastName}
+          {resource.approvedAt ? ` le ${formatDateTime(resource.approvedAt)}` : ""}.
         </p>
       )}
 

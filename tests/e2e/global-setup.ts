@@ -17,12 +17,15 @@ export default async function globalSetup(): Promise<void> {
   const { hash } = await import("@node-rs/argon2");
   const db = new PrismaClient({ datasourceUrl: env.DATABASE_URL });
   try {
-    const tables = await db.$queryRaw<{ name: string }[]>`
-      SELECT TABLE_NAME AS name FROM information_schema.TABLES
-      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '_prisma_migrations'`;
-    await db.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
-    for (const { name } of tables) await db.$executeRawUnsafe(`TRUNCATE TABLE \`${name}\``);
-    await db.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+    // Une transaction garantit une connexion unique (FOREIGN_KEY_CHECKS est propre à la connexion).
+    await db.$transaction(async (tx) => {
+      const tables = await tx.$queryRaw<{ name: string }[]>`
+        SELECT TABLE_NAME AS name FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> '_prisma_migrations'`;
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+      for (const { name } of tables) await tx.$executeRawUnsafe(`DELETE FROM \`${name}\``);
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+    });
 
     await db.user.create({
       data: {

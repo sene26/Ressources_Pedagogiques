@@ -263,6 +263,8 @@ async function seedResources(userIds: Map<string, string>, yearId: string, yearL
         publishAt: status === "PUBLISHED" ? publishAt : null,
         approvalStatus: demo.approval ?? "NOT_REQUIRED",
         everPublished: status === "PUBLISHED",
+        // Les ressources déjà visibles sont considérées comme notifiées : pas d'avalanche de notifications au démarrage.
+        notifiedAt: status === "PUBLISHED" && !demo.publishInDays && !demo.approval ? new Date(now - (30 - index) * 86_400_000) : null,
         authorId,
         academicYearId: yearId,
         createdAt: new Date(now - (30 - index) * 86_400_000),

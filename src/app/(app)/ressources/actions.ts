@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/action-state";
 import { runAction } from "@/server/run-action";
+import { processNotificationsSafely } from "@/server/services/notifications";
 import { requireUser } from "@/server/session";
 import {
   addVersion,
@@ -55,6 +56,7 @@ export async function createResourceAction(_s: ActionState, fd: FormData): Promi
     const actor = await requireUser();
     const resource = await createResource(actor, { ...metadataFrom(fd), publication: publicationFrom(fd), content: contentFrom(fd) });
     id = resource.id;
+    await processNotificationsSafely([resource.id]);
   });
   if (id) redirect(`/ressources/${id}?depose=1`);
   return result;
@@ -98,6 +100,7 @@ async function statusAction(fd: FormData, fn: (id: string) => Promise<string>): 
 export async function publishResourceAction(_s: ActionState, fd: FormData): Promise<ActionState> {
   return statusAction(fd, async (id) => {
     const resource = await publishResource(await requireUser(), id, publicationFrom(fd));
+    await processNotificationsSafely([id]);
     if (resource.approvalStatus === "PENDING") return "en-attente";
     return resource.publishAt && resource.publishAt > new Date() ? "programmee" : "publiee";
   });

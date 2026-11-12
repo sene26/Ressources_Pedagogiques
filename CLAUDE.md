@@ -72,7 +72,7 @@ Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modè
 | 1 | Socle (F1, F2, F5–F7) | Terminé |
 | 2 | Ressources (F9–F11) | Terminé |
 | 3 | Consultation (F12, F17–F20) | Terminé |
-| 4 | Examens et notifications (F13, F14, F21, F22) | À faire |
+| 4 | Examens et notifications (F13, F14, F21, F22) | Terminé |
 | 5 | Pilotage (F3, F4, F15, F23–F25) | À faire |
 | 6 | Finalisation | À faire |
 
@@ -100,5 +100,7 @@ docker compose up -d   # MariaDB + Mailpit pour le développement
 - `src/server/policies/resource-policy.ts` : « qui voit quoi » (A4), sous deux formes, `canViewResource` et `visibleResourcesWhere`, dont la concordance est testée (`tests/integration/resource-policy-consistency.test.ts`). Toute nouvelle liste de ressources DOIT passer par `visibleResourcesWhere`.
 - `src/server/storage/` : `StorageDriver` (local ou S3) ; les clés sont aléatoires et validées (pas de chemin fourni par l'utilisateur).
 - `src/app/api/files/[token]/route.ts` : seul point de sortie des fichiers (jeton HMAC de 10 min, accès revérifié, RG10).
+- `src/server/services/notifications.ts` : notifications de publication (une seule fois, champ `Resource.notifiedAt`), courriels groupés ; `/api/cron/notifications` (Bearer `CRON_SECRET`) traite les publications programmées.
+- Après une action qui fait disparaître l'élément affiché (publication, validation…), rediriger avec `?info=` plutôt que d'afficher le message dans un bloc qui disparaît.
 - `tests/support/` : chargement de `.env.test` (refus si le nom de la base ne contient pas « test ») et utilitaires de base de données.
-- Prisma refuse `migrate reset` lancé par un agent : les tests utilisent `migrate deploy` et vident les tables eux-mêmes.
+- Prisma refuse `migrate reset` lancé par un agent : les tests utilisent `migrate deploy` et vident les tables eux-mêmes (dans une transaction : `FOREIGN_KEY_CHECKS` est propre à une connexion).
