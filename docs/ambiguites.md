@@ -135,3 +135,12 @@ Une ressource `PRIVATE` reste l'affaire de son auteur. Le responsable ne la voit
 - Une ressource **restaurée** revient en brouillon : sa republication est un acte explicite.
 - Une **nouvelle version** est déposée avec un commentaire obligatoire. Un sujet déjà validé repasse « en attente de validation » (A5).
 - L'aperçu dans le navigateur n'est proposé que pour les formats sûrs (PDF, images, audio, vidéo). Les fichiers HTML, texte et code sont toujours téléchargés, pour éviter toute exécution de script (XSS).
+
+## A20. Recherche et consultation — ✅ par défaut (Lot 3)
+
+- **Recherche :** chaque mot de 3 lettres ou plus est **obligatoire** et peut être complété (« algorith » trouve « algorithmique »). Le titre compte double dans le classement. Les mots plus courts (« TD », « TP ») sont cherchés dans le titre et les mots-clés. La liste de « mots vides » anglaise de MariaDB est désactivée (`innodb_ft_enable_stopword = 0`).
+- **Filtre « Format » :** il porte sur l'ensemble des versions d'une ressource, pas seulement sur la version en vigueur. En pratique, le format change rarement d'une version à l'autre.
+- **Étudiants :** ils ne parcourent que leur formation, aux semestres de leur niveau (RG7). Le catalogue complet est réservé aux enseignants, aux responsables et à l'administrateur.
+- **« Nouvelle » :** une ressource est signalée comme nouvelle pendant **7 jours** après sa publication.
+- **Aperçu (F12) :** PDF, images, audio, vidéo, YouTube (domaine « nocookie ») et Google Drive. Comme Chrome sur Android n'affiche pas les PDF intégrés, un lien « nouvel onglet » est toujours proposé.
+- **Consultations (RG10) :** l'ouverture d'une fiche compte une **vue**, et un clic sur « Télécharger » compte un **téléchargement**. L'aperçu n'est pas compté comme un téléchargement.

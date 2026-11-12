@@ -6,7 +6,6 @@ import type { NextConfig } from "next";
  */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
@@ -19,7 +18,13 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "101mb" },
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Les pages ne peuvent pas être intégrées ailleurs (clickjacking)…
+      { source: "/((?!api/files/).*)", headers: [{ key: "X-Frame-Options", value: "DENY" }] },
+      // … mais les fichiers peuvent l'être par l'application elle-même (aperçu PDF, F12).
+      { source: "/api/files/:path*", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }] },
+    ];
   },
 };
 

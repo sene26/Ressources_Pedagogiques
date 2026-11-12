@@ -4,3 +4,6 @@ character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
 # Recherche plein texte : mots de 3 lettres et plus (« TD », « TP » sont gérés par les filtres de type).
 innodb_ft_min_token_size = 3
+# La liste de « mots vides » par défaut d'InnoDB est anglaise (the, for, com…) : on la désactive.
+# (L'application traite de toute façon ces mots par simple inclusion, si le réglage est absent.)
+innodb_ft_enable_stopword = 0

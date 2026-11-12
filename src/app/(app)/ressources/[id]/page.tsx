@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
+import { Preview } from "@/components/preview";
 import { PublicationFields } from "@/components/resource-fields";
 import { ResourceBadges } from "@/components/resource-badges";
 import { levelLabel, levelOfSemester } from "@/lib/academic";
@@ -9,6 +10,7 @@ import { formatDateTime } from "@/lib/dates";
 import { NotFoundError } from "@/lib/errors";
 import { FORMAT_LABELS, formatSize } from "@/lib/file-types";
 import { RESOURCE_TYPE_LABELS, VISIBILITY_LABELS } from "@/lib/labels";
+import { previewFor } from "@/lib/preview";
 import { issueFileToken } from "@/server/file-tokens";
 import { requireUser } from "@/server/session";
 import { recordAccess } from "@/server/services/access-log";
@@ -49,6 +51,8 @@ export default async function ResourcePage({ params, searchParams }: Params) {
   await recordAccess({ userId: user.id, resourceId: resource.id, versionId: resource.versions[0]?.id, kind: "VIEW" });
 
   const current = resource.versions[0];
+  const currentUrl = current ? `/api/files/${issueFileToken(current.id, user.id)}` : "";
+  const preview = current ? previewFor(current, currentUrl) : null;
   const isAuthor = resource.authorId === user.id;
   const now = new Date();
 
@@ -91,9 +95,12 @@ export default async function ResourcePage({ params, searchParams }: Params) {
           <p className="text-sm text-slate-600">
             {FORMAT_LABELS[current.format] ?? current.format} {current.sizeBytes ? `· ${formatSize(current.sizeBytes)}` : ""} · déposée le {formatDateTime(current.createdAt)}
           </p>
-          <a href={`/api/files/${issueFileToken(current.id, user.id)}`} className="btn btn-primary" rel="nofollow">
-            {current.externalUrl ? "Ouvrir le lien" : "Télécharger"}
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a href={currentUrl} className="btn btn-primary" rel="nofollow">
+              {current.externalUrl ? "Ouvrir le lien" : "Télécharger"}
+            </a>
+          </div>
+          {preview && <Preview kind={preview.kind} src={preview.src} title={resource.title} />}
         </section>
       )}
 

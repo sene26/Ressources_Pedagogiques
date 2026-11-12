@@ -3,10 +3,12 @@ import Link from "next/link";
 import { levelLabel, levelOfSemester } from "@/lib/academic";
 import { ROLE_LABELS } from "@/lib/labels";
 import { canAccessManagement, hasRole } from "@/server/policies/user-policy";
+import type { CurrentUser } from "@/server/current-user";
 import { requireUser } from "@/server/session";
 import { getCurrentAcademicYear } from "@/server/services/academic-years";
 import { listTeacherCourseElements } from "@/server/services/assignments";
-import { getStudentCurriculum } from "@/server/services/enrollments";
+import { getMyCourses } from "@/server/services/browse";
+import { MyCourses } from "@/components/my-courses";
 
 export const metadata: Metadata = { title: "Accueil" };
 
@@ -34,7 +36,7 @@ export default async function HomePage() {
         </p>
       )}
 
-      {year && hasRole(user, "STUDENT") && <StudentSection userId={user.id} yearId={year.id} yearLabel={year.label} />}
+      {year && hasRole(user, "STUDENT") && <StudentSection user={user} yearLabel={year.label} />}
       {year && hasRole(user, "TEACHER") && <TeacherSection userId={user.id} yearId={year.id} />}
 
       {canAccessManagement(user) && (
@@ -47,9 +49,9 @@ export default async function HomePage() {
   );
 }
 
-async function StudentSection({ userId, yearId, yearLabel }: { userId: string; yearId: string; yearLabel: string }) {
-  const curriculum = await getStudentCurriculum(userId, yearId);
-  if (!curriculum) {
+async function StudentSection({ user, yearLabel }: { user: CurrentUser; yearLabel: string }) {
+  const data = await getMyCourses(user);
+  if (!data) {
     return (
       <section className="card" data-testid="student-section">
         <h2 className="h2 mb-2">Mes cours</h2>
@@ -59,34 +61,11 @@ async function StudentSection({ userId, yearId, yearLabel }: { userId: string; y
       </section>
     );
   }
-  const { enrollment, semesters } = curriculum;
   return (
-    <section className="card space-y-4" data-testid="student-section">
-      <div>
-        <h2 className="h2">Mes cours</h2>
-        <p className="text-sm text-slate-600">
-          {enrollment.program.title} · {levelLabel(enrollment.program.cycle, enrollment.level)}
-        </p>
-      </div>
-      {semesters.map((semester) => (
-        <div key={semester.id}>
-          <h3 className="font-semibold">Semestre {semester.number}</h3>
-          {semester.teachingUnits.length === 0 && <p className="text-sm text-slate-500">Aucune UE.</p>}
-          <ul className="mt-1 space-y-2">
-            {semester.teachingUnits.map((unit) => (
-              <li key={unit.id}>
-                <p className="text-sm font-medium text-slate-700">{unit.code} — {unit.title}</p>
-                <ul className="ml-4 list-disc text-sm">
-                  {unit.courseElements.map((element) => (
-                    <li key={element.id}>{element.title}</li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </section>
+    <div className="space-y-2">
+      <h2 className="h2">Mes cours</h2>
+      <MyCourses data={data} />
+    </div>
   );
 }
 
@@ -103,7 +82,7 @@ async function TeacherSection({ userId, yearId }: { userId: string; yearId: stri
             const semester = element.teachingUnit.semester;
             return (
               <li key={element.id} className="py-2">
-                <p className="font-medium">{element.title}</p>
+                <Link href={`/ec/${element.id}`} className="link font-medium">{element.title}</Link>
                 <p className="text-sm text-slate-600">
                   {semester.program.title} · {levelLabel(semester.program.cycle, levelOfSemester(semester.number))} · S{semester.number} · {element.teachingUnit.title}
                 </p>

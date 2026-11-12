@@ -71,7 +71,7 @@ Architecture détaillée : [`docs/architecture.md`](docs/architecture.md). Modè
 | 0 | Conception | Validé (propositions par défaut, MariaDB) |
 | 1 | Socle (F1, F2, F5–F7) | Terminé |
 | 2 | Ressources (F9–F11) | Terminé |
-| 3 | Consultation (F12, F17–F20) | À faire |
+| 3 | Consultation (F12, F17–F20) | Terminé |
 | 4 | Examens et notifications (F13, F14, F21, F22) | À faire |
 | 5 | Pilotage (F3, F4, F15, F23–F25) | À faire |
 | 6 | Finalisation | À faire |

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { signOut } from "@/server/auth";
 import { isTeacher } from "@/server/policies/resource-policy";
-import { canAccessManagement } from "@/server/policies/user-policy";
+import { canAccessManagement, hasRole } from "@/server/policies/user-policy";
 import { requireUser } from "@/server/session";
 import { ROLE_LABELS } from "@/lib/labels";
 
@@ -21,7 +21,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/" className="font-bold text-brand-800">RessourcesPéda</Link>
           <nav aria-label="Navigation principale" className="flex flex-wrap items-center gap-4 text-sm">
             <Link href="/" className="link">Accueil</Link>
+            {hasRole(user, "STUDENT") && <Link href="/mes-cours" className="link">Mes cours</Link>}
             {isTeacher(user) && <Link href="/mes-ressources" className="link">Mes ressources</Link>}
+            {(isTeacher(user) || canAccessManagement(user)) && <Link href="/catalogue" className="link">Catalogue</Link>}
+            <Link href="/recherche" className="link">Rechercher</Link>
             {canAccessManagement(user) && <Link href="/gestion/formations" className="link">Gestion</Link>}
           </nav>
           <div className="flex items-center gap-3 text-sm">
